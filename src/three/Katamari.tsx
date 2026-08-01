@@ -2,11 +2,14 @@
 
 import { useFrame } from "@react-three/fiber";
 import { BallCollider, RigidBody, type RapierRigidBody } from "@react-three/rapier";
-import { useRef } from "react";
-import { speedMultiplier } from "@/game/growth";
+import { useMemo, useRef } from "react";
+import { canPickUp, speedMultiplier } from "@/game/growth";
+import { isTouching, placeSpawns } from "@/game/layout";
+import { TIER_DIAMETER_M } from "@/game/objectTiers";
+import { torqueForInput } from "@/game/rolling";
 import { useGameStore } from "@/store/gameStore";
 import type { InputRef } from "@/input/useInput";
-import { ballPosition } from "./ballTracker";
+import { ballMotion, ballPosition } from "./ballTracker";
 import { AttachedWord } from "./WordObject";
 
 /**
@@ -14,8 +17,11 @@ import { AttachedWord } from "./WordObject";
  * 각가속도가 일정하다. 체감 속도는 플레이테스트에서 이 값으로 조율한다.
  */
 const TORQUE_K = 26;
-/** 최대 각속도. 공이 통제 불능으로 빨라지는 것을 막는다. */
-const MAX_ANGULAR_SPEED = 14;
+/**
+ * 최대 각속도. 공이 통제 불능으로 빨라지는 것을 막는다.
+ * 선속도는 ω·r이므로 5cm 공은 0.8m/s, 20cm 공은 3.2m/s까지 난다.
+ */
+const MAX_ANGULAR_SPEED = 32;
 
 export function Katamari({ inputRef }: { inputRef: InputRef }) {
   const body = useRef<RapierRigidBody>(null);
@@ -26,21 +32,44 @@ export function Katamari({ inputRef }: { inputRef: InputRef }) {
   const diameterM = useGameStore((st) => st.diameterM);
   const radius = diameterM / 2;
 
+  // Field와 같은 좌표를 써야 한다. game/layout이 유일한 출처다.
+  const points = useMemo(() => placeSpawns(spawns.map((s) => s.tier)), [spawns]);
+
   useFrame((_, delta) => {
     const rb = body.current;
     if (!rb) return;
 
-    // 카메라가 읽을 위치를 갱신한다
+    // 카메라와 디버그 오버레이가 읽을 값을 갱신한다
     const t = rb.translation();
     ballPosition.x = t.x;
     ballPosition.y = t.y;
     ballPosition.z = t.z;
+
+    const lv = rb.linvel();
+    const av = rb.angvel();
+    ballMotion.speed = Math.hypot(lv.x, lv.z);
+    ballMotion.angularSpeed = Math.hypot(av.x, av.y, av.z);
+    ballMotion.fps = delta > 0 ? 1 / delta : 0;
 
     const s = useGameStore.getState();
     if (s.phase !== "playing") return;
 
     // 시간 흐름. 스토어는 초가 바뀔 때만 갱신된다.
     s.tick(delta);
+
+    // 부착 판정. 충돌 이벤트를 쓰면 빠를 때 작은 사물을 통과해 버린다.
+    const ball = { x: t.x, z: t.z, diameterM: s.diameterM };
+    for (let i = 0; i < s.spawns.length; i += 1) {
+      if (s.attachedIds.includes(i)) continue;
+      const spawn = s.spawns[i];
+      const point = points[i];
+      if (!spawn || !point) continue;
+      const objectDiameterM = TIER_DIAMETER_M[spawn.tier];
+      if (!canPickUp(s.diameterM, objectDiameterM)) continue;
+      if (!isTouching(ball, point, objectDiameterM)) continue;
+      s.pickUp(i);
+      break; // 한 프레임에 하나만 붙인다
+    }
 
     const v = inputRef.current;
     if (v.x === 0 && v.y === 0) return;
@@ -54,12 +83,7 @@ export function Katamari({ inputRef }: { inputRef: InputRef }) {
     const r = s.diameterM / 2;
     const strength = TORQUE_K * rb.mass() * r * r * mul * delta;
 
-    // 화면 위(-y)로 밀면 카메라 반대편(-Z)으로 굴러야 한다.
-    // 접점이 -Y이므로 ω_x > 0 이 -Z 방향 이동을 만든다.
-    rb.applyTorqueImpulse(
-      { x: -v.y * strength, y: 0, z: v.x * strength },
-      true
-    );
+    rb.applyTorqueImpulse(torqueForInput(v, strength), true);
   });
 
   return (

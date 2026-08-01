@@ -18,9 +18,11 @@ export function ChaseCamera() {
   const target = useRef(new Vector3());
 
   useFrame((_, delta) => {
+    // 공 지름에 비례해야 체감 크기가 일정하다. 상수항이 크면 작은 공일 때
+    // 카메라가 공 지름의 수십 배 거리에 있어서 공이 점처럼 보인다.
     const d = useGameStore.getState().diameterM;
-    const dist = 1.1 + d * 5;
-    const height = 0.6 + d * 2.2;
+    const dist = 0.12 + d * 7;
+    const height = 0.06 + d * 3.5;
 
     desired.current.set(ballPosition.x, ballPosition.y + height, ballPosition.z + dist);
 

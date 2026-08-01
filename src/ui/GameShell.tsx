@@ -19,7 +19,16 @@ const centered: React.CSSProperties = {
   textAlign: "center"
 };
 
+const DEBUG_ID = "gweohon-debug";
+
+/** ?debug=1 을 붙이면 계측값이 보인다. 플레이테스트에서 파라미터를 조율할 때 쓴다. */
+function debugRequested(): boolean {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).has("debug");
+}
+
 export function GameShell() {
+  const [showDebug] = useState(debugRequested);
   const [bank, setBank] = useState<WordBank | null>(null);
   const [error, setError] = useState<string | null>(null);
   const startStage = useGameStore((s) => s.startStage);
@@ -72,9 +81,26 @@ export function GameShell() {
 
   return (
     <>
-      <GameCanvas inputRef={vector} />
+      <GameCanvas inputRef={vector} debugElementId={showDebug ? DEBUG_ID : undefined} />
       <Hud />
       <VirtualStick stick={stick} />
+      {showDebug && (
+        <div
+          id={DEBUG_ID}
+          style={{
+            position: "fixed",
+            bottom: 8,
+            left: 8,
+            zIndex: 15,
+            background: "rgba(9,14,32,0.72)",
+            borderRadius: 8,
+            padding: "6px 10px",
+            fontSize: 12,
+            fontFamily: "ui-monospace, monospace",
+            pointerEvents: "none"
+          }}
+        />
+      )}
       <ResultScreen onRetry={() => begin(bank)} />
     </>
   );

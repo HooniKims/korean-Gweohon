@@ -28,10 +28,11 @@ function LabelTag({
   size: number;
 }) {
   const texture = useMemo(() => getLabelTexture(text, color), [text, color]);
-  const w = Math.max(size * 1.8, 0.06);
+  // 작은 사물도 읽히게 최소 크기를 두고, 큰 사물에서 간판처럼 커지지 않게 상한을 둔다.
+  const w = Math.min(Math.max(size * 1.6, 0.05), 0.22);
   const h = w / 4;
   return (
-    <mesh position={[0, size * 0.85, 0]}>
+    <mesh position={[0, size * 0.6 + h * 0.7, 0]}>
       <planeGeometry args={[w, h]} />
       <meshBasicMaterial map={texture} transparent toneMapped={false} />
     </mesh>
@@ -39,34 +40,22 @@ function LabelTag({
 }
 
 export type WordObjectProps = {
-  index: number;
   spawn: SpawnPlan;
   position: [number, number, number];
   /** 상급 난이도에서 색을 끄면 회색으로 통일한다. P1은 항상 false. */
   greyscale?: boolean;
-  onTouch: (index: number) => void;
 };
 
-export function WordObject({
-  index,
-  spawn,
-  position,
-  greyscale = false,
-  onTouch
-}: WordObjectProps) {
+/**
+ * 필드에 놓인 사물. 부착 판정은 Katamari가 거리로 하고(game/layout의 isTouching),
+ * 이 바디는 공에 밀려 굴러다니는 물리 반응만 담당한다.
+ */
+export function WordObject({ spawn, position, greyscale = false }: WordObjectProps) {
   const size = TIER_DIAMETER_M[spawn.tier];
   const color = greyscale ? "#9ca3af" : POS_COLORS[spawn.entry.pos];
 
   return (
-    <RigidBody
-      colliders="cuboid"
-      position={position}
-      friction={0.9}
-      userData={{ wordIndex: index }}
-      onCollisionEnter={({ other }) => {
-        if (other.rigidBodyObject?.name === "katamari") onTouch(index);
-      }}
-    >
+    <RigidBody colliders="cuboid" position={position} friction={0.9}>
       <Body size={size} color={color} />
       <LabelTag text={spawn.entry.text} color={color} size={size} />
     </RigidBody>
