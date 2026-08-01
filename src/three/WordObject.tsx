@@ -13,6 +13,9 @@ import { modelForIndex } from "./modelRegistry";
 /** 사물 모델의 기본 위쪽. Body가 원점을 바닥 중앙으로 맞추므로 +Y가 위다. */
 const UP = new Vector3(0, 1, 0);
 
+/** 사물 밀도. 물의 1/40 정도로 가볍게 둬서 작은 공도 밀어낼 수 있다. */
+const PUSHABLE_DENSITY = 25;
+
 /** 상급 난이도에서 색을 끄면 이 회색으로 통일한다. */
 const GREY = "#9ca3af";
 
@@ -132,7 +135,19 @@ export function WordObject({
   const url = modelForIndex(spawn.tier, index);
 
   return (
-    <RigidBody colliders="cuboid" position={position} friction={0.9}>
+    /*
+      밀도를 낮춰 공이 밀어낼 수 있게 한다. 기본 밀도면 20cm 사물이 5cm 공보다
+      64배 무거워서 벽이 되고, 좁은 필드에서 공이 끼여 판이 죽는다.
+      큰 것을 밀 때 무겁게 느껴지는 것은 유지하되 못 밀 정도는 아니게 둔다.
+    */
+    <RigidBody
+      colliders="cuboid"
+      position={position}
+      friction={0.55}
+      density={PUSHABLE_DENSITY}
+      linearDamping={1.4}
+      angularDamping={1.4}
+    >
       <mesh visible={false}>
         <boxGeometry args={[size, size, size]} />
       </mesh>

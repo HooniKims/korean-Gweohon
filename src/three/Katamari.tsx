@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { canPickUp, speedMultiplier } from "@/game/growth";
 import { isTouching, placeSpawns } from "@/game/layout";
 import { rotateInput, torqueForInput } from "@/game/rolling";
+import { createStuckState, updateStuck } from "@/game/stuck";
 import { useGameStore } from "@/store/gameStore";
 import {
   KEY_ROTATE_SPEED,
@@ -41,6 +42,10 @@ const MAX_ANGULAR_SPEED = 26;
 const FALL_LIMIT_Y = -0.6;
 /** 안내 문구를 띄워 두는 시간(초) */
 const NOTICE_SEC = 1.8;
+/** 끼였을 때 뒤로 밀어주는 세기 (질량 대비) */
+const ESCAPE_PUSH = 1.1;
+/** 끼였을 때 살짝 띄우는 세기. 사물 위로 타 넘도록 돕는다. */
+const ESCAPE_LIFT = 1.5;
 
 /**
  * 카타마리 코어. 품사색 틴트 대상이 아니라 Tripo 원본 색을 그대로 쓴다.
@@ -80,6 +85,7 @@ export function Katamari({
   const body = useRef<RapierRigidBody>(null);
   const visual = useRef<Group>(null);
   const noticeHold = useRef(0);
+  const stuck = useRef(createStuckState());
   const frameWindow = useRef(0);
   const frameWorst = useRef(0);
   const frameHitches = useRef(0);
@@ -203,9 +209,32 @@ export function Katamari({
     }
 
     const raw = inputRef.current;
-    if (raw.x === 0 && raw.y === 0) return;
+    if (raw.x === 0 && raw.y === 0) {
+      stuck.current = updateStuck(stuck.current, {
+        pushing: false,
+        speed: ballMotion.speed,
+        deltaSec: delta
+      });
+      return;
+    }
     // 카메라가 돈 만큼 입력도 돌려야 「화면 위 = 앞으로」가 유지된다
     const v = rotateInput(raw, cameraState.yaw);
+
+    // 끼임 감지. 밀고 있는데도 제자리면 위로 살짝 띄우고 뒤로 밀어 빼낸다.
+    stuck.current = updateStuck(stuck.current, {
+      pushing: true,
+      speed: ballMotion.speed,
+      deltaSec: delta
+    });
+    if (stuck.current.escape) {
+      const m = rb.mass();
+      rb.applyImpulse(
+        { x: -v.x * m * ESCAPE_PUSH, y: m * ESCAPE_LIFT, z: v.y * m * ESCAPE_PUSH },
+        true
+      );
+      s.setNotice("끼었어요 — 다른 길로 돌아가 보세요");
+      noticeHold.current = NOTICE_SEC;
+    }
 
     // 각속도 상한에 걸렸으면 더 밀지 않는다
     if (ballMotion.angularSpeed > MAX_ANGULAR_SPEED) return;
