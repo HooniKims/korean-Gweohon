@@ -1,0 +1,6 @@
+{
+  "$comment": "Tripo 생성 에셋 기록. 프롬프트를 남겨 같은 톤으로 재생성할 수 있게 한다. 프롬프트 원본은 prompts.md 참조.",
+  "version": 1,
+  "source": "Tripo (tripo3d.ai)",
+  "assets": []
+}
