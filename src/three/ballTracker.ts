@@ -14,6 +14,10 @@ export const ballMotion = {
   angularSpeed: 0,
   /** 초당 프레임 수 */
   fps: 0,
+  /** 최근 2초 동안 가장 느렸던 프레임(ms). 끊김은 평균이 아니라 여기서 보인다. */
+  worstMs: 0,
+  /** 최근 2초 동안 33ms를 넘긴 프레임 수 */
+  hitches: 0,
   /** 수평 진행 방향(정규화 전). 캐릭터가 뒤에 서는 데 쓴다. */
   dirX: 0,
   dirZ: 0

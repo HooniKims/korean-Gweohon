@@ -16,6 +16,13 @@ const MIN_HEIGHT = 0.06;
 const MAX_HEIGHT = 0.5;
 /** 모델을 미리 이 키로 정규화해 둔다(미터). 그룹 스케일은 이 값 기준 배수다. */
 const BASE_HEIGHT = 0.08;
+/**
+ * 모델 자체가 바라보는 방향 보정(라디안).
+ *
+ * 이 모델은 정면이 +X다. 보정하지 않으면 옆통수나 등으로 공을 미는 그림이 된다.
+ * 화면을 보고 맞춘 값이다.
+ */
+const MODEL_FACING_OFFSET = -Math.PI / 2;
 /** 밀 때 앞으로 기울이는 각(라디안) */
 const PUSH_LEAN = 0.32;
 /** 걷는 흔들림 */
@@ -90,7 +97,7 @@ export function Roller() {
       ballPosition.z - Math.cos(shown.current) * back
     );
     // 공을 바라본다
-    g.rotation.y = shown.current;
+    g.rotation.y = shown.current + MODEL_FACING_OFFSET;
     rollerDebug.x = g.position.x;
     rollerDebug.y = g.position.y;
     rollerDebug.z = g.position.z;

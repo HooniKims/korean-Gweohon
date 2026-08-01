@@ -9,7 +9,10 @@ import { isTouching, placeSpawns } from "@/game/layout";
 import { rotateInput, torqueForInput } from "@/game/rolling";
 import { useGameStore } from "@/store/gameStore";
 import { KEY_ROTATE_SPEED, type InputRef, type NumberRef } from "@/input/useInput";
-import { Mesh, type Object3D } from "three";
+import { Vector3, type Group, type Mesh, type Object3D } from "three";
+
+/** 매 프레임 새 객체를 만들지 않도록 재사용한다. */
+const worldPos = new Vector3();
 import { ballMotion, ballPosition, cameraState, coreDebug } from "./ballTracker";
 import { measureModel } from "./measureModel";
 import { CORE_MODEL } from "./modelRegistry";
@@ -68,6 +71,10 @@ export function Katamari({
   yawTarget: NumberRef;
 }) {
   const body = useRef<RapierRigidBody>(null);
+  const visual = useRef<Group>(null);
+  const frameWindow = useRef(0);
+  const frameWorst = useRef(0);
+  const frameHitches = useRef(0);
 
   const spawns = useGameStore((st) => st.spawns);
   const attachedIds = useGameStore((st) => st.attachedIds);
@@ -100,11 +107,21 @@ export function Katamari({
     const rb = body.current;
     if (!rb) return;
 
-    // 카메라와 디버그 오버레이가 읽을 값을 갱신한다
+    // 카메라가 따라갈 위치는 화면에 실제로 그려진 좌표에서 읽는다.
+    // 물리 원시 좌표는 60Hz로 갱신되는데 메시는 그 사이를 보간해 그려지므로,
+    // 원시 좌표를 따라가면 공이 카메라 안에서 미세하게 떨린다.
     const t = rb.translation();
-    ballPosition.x = t.x;
-    ballPosition.y = t.y;
-    ballPosition.z = t.z;
+    const visualGroup = visual.current;
+    if (visualGroup) {
+      visualGroup.getWorldPosition(worldPos);
+      ballPosition.x = worldPos.x;
+      ballPosition.y = worldPos.y;
+      ballPosition.z = worldPos.z;
+    } else {
+      ballPosition.x = t.x;
+      ballPosition.y = t.y;
+      ballPosition.z = t.z;
+    }
 
     const lv = rb.linvel();
     const av = rb.angvel();
@@ -115,6 +132,19 @@ export function Katamari({
     }
     ballMotion.angularSpeed = Math.hypot(av.x, av.y, av.z);
     ballMotion.fps = delta > 0 ? 1 / delta : 0;
+
+    // 끊김 계측. 평균 fps가 60이어도 가끔 튀는 프레임이 있으면 손에는 끊겨 느껴진다.
+    const ms = delta * 1000;
+    frameWindow.current += delta;
+    if (ms > frameWorst.current) frameWorst.current = ms;
+    if (ms > 33) frameHitches.current += 1;
+    if (frameWindow.current >= 2) {
+      ballMotion.worstMs = frameWorst.current;
+      ballMotion.hitches = frameHitches.current;
+      frameWindow.current = 0;
+      frameWorst.current = 0;
+      frameHitches.current = 0;
+    }
 
     // 어떤 이유로든 필드 밖으로 떨어지면 되돌린다. 끝없이 떨어지면 판이 죽는다.
     if (t.y < FALL_LIMIT_Y) {
@@ -178,7 +208,9 @@ export function Katamari({
     >
       {/* 지름이 바뀔 때만 콜라이더가 다시 만들어진다 (부착 순간에만 일어남) */}
       <BallCollider args={[radius]} />
-      <KatamariCore radius={radius} />
+      <group ref={visual}>
+        <KatamariCore radius={radius} />
+      </group>
       {attachedIds.map((id) => {
         const spawn = spawns[id];
         const dir = attachDirs[id];

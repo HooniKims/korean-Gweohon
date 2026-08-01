@@ -43,7 +43,7 @@ export function DebugReadout({ elementId }: { elementId: string }) {
     }
 
     el.textContent = [
-      `fps ${ballMotion.fps.toFixed(0)}`,
+      `fps ${ballMotion.fps.toFixed(0)} 최악 ${ballMotion.worstMs.toFixed(0)}ms 끊김 ${ballMotion.hitches}`,
       `v ${ballMotion.speed.toFixed(2)}`,
       `d ${(d * 100).toFixed(1)}cm`,
       `pos ${ballPosition.x.toFixed(2)},${ballPosition.z.toFixed(2)}`,
