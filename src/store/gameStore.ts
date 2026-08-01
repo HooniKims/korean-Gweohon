@@ -11,7 +11,7 @@ import {
 } from "@/game/scoring";
 import { isCleared, judgePickup } from "@/game/modes/singlePos";
 import type { StageDef } from "@/game/stages";
-import type { SpawnPlan } from "@/game/words";
+import type { SpawnPlan, WordEntry } from "@/game/words";
 
 export type Phase = "ready" | "playing" | "cleared" | "failed";
 
@@ -136,3 +136,23 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ ...initialState, score: createScoreState() });
   }
 }));
+
+/**
+ * 이 판에서 부착밀로 붙인 단어들. 새 상태를 두지 않고 붙은 목록에서 파생한다.
+ * 정화 지대와 오답노트(P2)도 이 목록을 쓴다.
+ *
+ * 주의: 이 함수를 zustand 셀렉터로 직접 넘기면 매 렌더마다 새 배열이 나와
+ * 무한 리렌더가 된다. 원본을 구독하고 useMemo로 감싸서 쓴다.
+ */
+export function misfitWords(
+  input: Pick<GameState, "spawns" | "attachedIds" | "stage">
+): WordEntry[] {
+  if (!input.stage) return [];
+  const targetPos = input.stage.targetPos;
+  const out: WordEntry[] = [];
+  for (const id of input.attachedIds) {
+    const entry = input.spawns[id]?.entry;
+    if (entry && entry.pos !== targetPos) out.push(entry);
+  }
+  return out;
+}
