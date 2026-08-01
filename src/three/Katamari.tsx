@@ -39,6 +39,8 @@ const TORQUE_K = 55;
 const MAX_ANGULAR_SPEED = 26;
 /** 이 높이보다 아래로 떨어지면 필드 밖으로 나간 것으로 본다. */
 const FALL_LIMIT_Y = -0.6;
+/** 안내 문구를 띄워 두는 시간(초) */
+const NOTICE_SEC = 1.8;
 
 /**
  * 카타마리 코어. 품사색 틴트 대상이 아니라 Tripo 원본 색을 그대로 쓴다.
@@ -77,6 +79,7 @@ export function Katamari({
 }) {
   const body = useRef<RapierRigidBody>(null);
   const visual = useRef<Group>(null);
+  const noticeHold = useRef(0);
   const frameWindow = useRef(0);
   const frameWorst = useRef(0);
   const frameHitches = useRef(0);
@@ -167,16 +170,31 @@ export function Katamari({
 
     // 부착 판정. 충돌 이벤트를 쓰면 빠를 때 작은 사물을 통과해 버린다.
     const ball = { x: t.x, z: t.z, diameterM: s.diameterM };
+    let bumpedTooBig: string | null = null;
     for (let i = 0; i < s.spawns.length; i += 1) {
       if (s.attachedIds.includes(i)) continue;
       const spawn = s.spawns[i];
       const point = points[i];
       if (!spawn || !point) continue;
       const objectDiameterM = spawn.sizeM;
-      if (!canPickUp(s.diameterM, objectDiameterM)) continue;
       if (!isTouching(ball, point, objectDiameterM)) continue;
+
+      if (!canPickUp(s.diameterM, objectDiameterM)) {
+        // 튕겨나가는 이유를 알려준다. 신호가 없으면 학생은 버그로 여긴다.
+        bumpedTooBig = spawn.entry.text;
+        continue;
+      }
       s.pickUp(i);
+      bumpedTooBig = null;
       break; // 한 프레임에 하나만 붙인다
+    }
+
+    if (bumpedTooBig) {
+      s.setNotice(`「${bumpedTooBig}」는 아직 너무 커요 — 더 키워서 오세요`);
+      noticeHold.current = NOTICE_SEC;
+    } else if (noticeHold.current > 0) {
+      noticeHold.current -= delta;
+      if (noticeHold.current <= 0) s.setNotice(null);
     }
 
     // Q·E 로도 시점을 돌린다

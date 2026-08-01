@@ -83,3 +83,30 @@ describe("speedMultiplier", () => {
     expect(speedMultiplier(50)).toBe(0.2);
   });
 });
+
+describe("너무 큰 것은 튕긴다 (괴혼 규칙)", () => {
+  it("5cm 공은 5.5cm까지 먹고 그 위는 못 먹는다", () => {
+    expect(canPickUp(0.05, 0.055)).toBe(true);
+    expect(canPickUp(0.05, 0.056)).toBe(false);
+  });
+
+  it("공을 키우면 전에 못 먹던 것을 먹을 수 있다", () => {
+    const target = 0.2;
+    let d = START_DIAMETER_M;
+    expect(canPickUp(d, target)).toBe(false);
+    // 자기 크기의 85%짜리를 계속 먹으며 자란다
+    for (let i = 0; i < 40 && !canPickUp(d, target); i += 1) {
+      d = grow(d, d * 0.85);
+    }
+    expect(canPickUp(d, target)).toBe(true);
+  });
+
+  it("먹을 수 있는 크기와 못 먹는 크기를 나누는 기준은 하나다", () => {
+    // 판정이 여러 곳에 흩어지면 화면 신호와 실제 부착이 어긋난다
+    for (const d of [0.05, 0.1, 0.3, 1]) {
+      const limit = d * PICKUP_RATIO;
+      expect(canPickUp(d, limit)).toBe(true);
+      expect(canPickUp(d, limit * 1.001)).toBe(false);
+    }
+  });
+});

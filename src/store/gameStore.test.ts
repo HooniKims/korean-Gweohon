@@ -176,3 +176,30 @@ describe("gameStore", () => {
     expect(s().score.points).toBe(0);
   });
 });
+
+describe("안내 문구", () => {
+  beforeEach(() => {
+    useGameStore.getState().reset();
+  });
+
+  it("문구를 띄우고 지울 수 있다", () => {
+    s().setNotice("너무 커요");
+    expect(s().notice).toBe("너무 커요");
+    s().setNotice(null);
+    expect(s().notice).toBeNull();
+  });
+
+  it("같은 문구를 다시 넣으면 스토어를 갱신하지 않는다", () => {
+    // 매 프레임 불리므로 같은 값에 set을 부르면 리렌더가 계속 일어난다
+    s().setNotice("너무 커요");
+    const before = useGameStore.getState();
+    s().setNotice("너무 커요");
+    expect(useGameStore.getState()).toBe(before);
+  });
+
+  it("새 스테이지를 시작하면 문구가 사라진다", () => {
+    s().setNotice("너무 커요");
+    s().startStage(stage, spawns);
+    expect(s().notice).toBeNull();
+  });
+});

@@ -25,11 +25,14 @@ const GREY = "#9ca3af";
 function Body({
   size,
   color,
-  url
+  url,
+  dim = false
 }: {
   size: number;
   color: string;
   url: string;
+  /** 아직 못 붙이는 사물. 어둡게 그려 「지금은 무리」임을 알린다. */
+  dim?: boolean;
 }) {
   const { scene } = useGLTF(url);
 
@@ -42,7 +45,11 @@ function Body({
       mesh.material = new MeshStandardMaterial({
         color,
         flatShading: true,
-        roughness: 0.85
+        roughness: 0.85,
+        // 못 붙이는 사물은 어둡게 죽여 둔다. 눈으로 바로 구분돼야 한다.
+        emissiveIntensity: 0,
+        opacity: dim ? 0.55 : 1,
+        transparent: dim
       });
       mesh.castShadow = true;
     });
@@ -52,7 +59,7 @@ function Body({
     object.position.set(-bounds.center.x, -bounds.min.y, -bounds.center.z);
 
     return { object, scale: size / bounds.longest };
-  }, [scene, size, color]);
+  }, [scene, size, color, dim]);
 
   return (
     <group scale={scale}>
@@ -65,11 +72,13 @@ function Body({
 function LabelTag({
   text,
   color,
-  size
+  size,
+  dim = false
 }: {
   text: string;
   color: string;
   size: number;
+  dim?: boolean;
 }) {
   const texture = useMemo(() => getLabelTexture(text, color), [text, color]);
   // 작은 사물도 읽히게 최소 크기를 두고, 큰 사물에서 간판처럼 커지지 않게 상한을 둔다.
@@ -81,7 +90,13 @@ function LabelTag({
     <Billboard position={[0, size * 0.75 + h * 0.8, 0]}>
       <mesh>
         <planeGeometry args={[w, h]} />
-        <meshBasicMaterial map={texture} transparent toneMapped={false} depthTest={false} />
+        <meshBasicMaterial
+          map={texture}
+          transparent
+          opacity={dim ? 0.4 : 1}
+          toneMapped={false}
+          depthTest={false}
+        />
       </mesh>
     </Billboard>
   );
@@ -94,6 +109,8 @@ export type WordObjectProps = {
   position: [number, number, number];
   /** 상급 난이도에서 색을 끄면 회색으로 통일한다. P1은 항상 false. */
   greyscale?: boolean;
+  /** 지금 공으로 붙일 수 있는가. 못 붙이면 흐리게 그려 튕기는 이유를 알려준다. */
+  pickable?: boolean;
 };
 
 /**
@@ -107,7 +124,8 @@ export function WordObject({
   index,
   spawn,
   position,
-  greyscale = false
+  greyscale = false,
+  pickable = true
 }: WordObjectProps) {
   const size = spawn.sizeM;
   const color = greyscale ? GREY : POS_COLORS[spawn.entry.pos];
@@ -118,8 +136,8 @@ export function WordObject({
       <mesh visible={false}>
         <boxGeometry args={[size, size, size]} />
       </mesh>
-      <Body size={size} color={color} url={url} />
-      <LabelTag text={spawn.entry.text} color={color} size={size} />
+      <Body size={size} color={color} url={url} dim={!pickable} />
+      <LabelTag text={spawn.entry.text} color={color} size={size} dim={!pickable} />
     </RigidBody>
   );
 }

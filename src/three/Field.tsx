@@ -2,6 +2,7 @@
 
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { useMemo } from "react";
+import { canPickUp } from "@/game/growth";
 import { FIELD_RADIUS, placeSpawns } from "@/game/layout";
 import { useGameStore } from "@/store/gameStore";
 import { WordObject } from "./WordObject";
@@ -39,6 +40,7 @@ function Walls() {
 export function Field() {
   const spawns = useGameStore((s) => s.spawns);
   const attachedIds = useGameStore((s) => s.attachedIds);
+  const diameterM = useGameStore((s) => s.diameterM);
 
   // 배치는 game/layout이 유일한 출처다. Katamari의 부착 판정도 같은 좌표를 쓴다.
   const points = useMemo(() => placeSpawns(spawns.map((s) => ({ sizeM: s.sizeM, isTarget: s.isTarget }))), [spawns]);
@@ -60,7 +62,15 @@ export function Field() {
         if (!p) return null;
         // 큰 사물은 바닥에 닿게 y를 올려준다
         const y = spawn.sizeM * 0.4;
-        return <WordObject key={i} index={i} spawn={spawn} position={[p.x, y, p.z]} />;
+        return (
+          <WordObject
+            key={i}
+            index={i}
+            spawn={spawn}
+            position={[p.x, y, p.z]}
+            pickable={canPickUp(diameterM, spawn.sizeM)}
+          />
+        );
       })}
     </>
   );

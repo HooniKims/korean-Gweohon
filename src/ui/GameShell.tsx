@@ -14,6 +14,7 @@ import { useGameStore } from "@/store/gameStore";
 import { CameraPad } from "./CameraPad";
 import { ControlHint } from "./ControlHint";
 import { Hud } from "./Hud";
+import { Notice } from "./Notice";
 import { ResultScreen } from "./ResultScreen";
 
 const centered: React.CSSProperties = {
@@ -110,6 +111,7 @@ export function GameShell() {
         zoomTarget={zoomTarget}
         debugElementId={showDebug ? DEBUG_ID : undefined} />
       <Hud />
+      <Notice />
       <VirtualStick stick={stick} />
       <ControlHint />
       <CameraPad

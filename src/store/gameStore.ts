@@ -28,7 +28,12 @@ type GameState = {
   secondsLeft: number;
   stars: 0 | 1 | 2 | 3;
 
+  /** 화면에 잠깐 띄우는 안내. 「아직 너무 커요」처럼 규칙을 알려준다. */
+  notice: string | null;
+
   startStage: (stage: StageDef, spawns: SpawnPlan[]) => void;
+  /** 같은 문구면 아무 일도 하지 않는다. 매 프레임 불려도 리렌더가 없다. */
+  setNotice: (text: string | null) => void;
   pickUp: (spawnIndex: number) => void;
   tick: (deltaSec: number) => void;
   reset: () => void;
@@ -52,7 +57,8 @@ const initialState = {
   collected: 0,
   misfits: 0,
   secondsLeft: 0,
-  stars: 0 as 0 | 1 | 2 | 3
+  stars: 0 as 0 | 1 | 2 | 3,
+  notice: null as string | null
 };
 
 /**
@@ -110,6 +116,11 @@ export const useGameStore = create<GameState>((set, get) => ({
           })
         : s.stars
     });
+  },
+
+  setNotice: (text) => {
+    if (get().notice === text) return;
+    set({ notice: text });
   },
 
   tick: (deltaSec) => {
