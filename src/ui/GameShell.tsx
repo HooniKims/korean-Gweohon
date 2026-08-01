@@ -8,7 +8,10 @@ import { parseWordBank, planSpawns, type WordBank } from "@/game/words";
 import { useInput } from "@/input/useInput";
 import { VirtualStick } from "@/input/VirtualStick";
 import { GameCanvas } from "@/three/GameCanvas";
+import { refreshLabelsWhenFontReady } from "@/three/labelTexture";
+import { preloadModels } from "@/three/modelRegistry";
 import { useGameStore } from "@/store/gameStore";
+import { ControlHint } from "./ControlHint";
 import { Hud } from "./Hud";
 import { ResultScreen } from "./ResultScreen";
 
@@ -34,7 +37,13 @@ export function GameShell() {
   const [bank, setBank] = useState<WordBank | null>(null);
   const [error, setError] = useState<string | null>(null);
   const startStage = useGameStore((s) => s.startStage);
-  const { vector, stick } = useInput();
+  const { vector, yawTarget, pitchTarget, zoomTarget, stick } = useInput();
+
+  // 첫 부착에서 끊기지 않도록 모델을 미리 받는다
+  useEffect(() => {
+    preloadModels();
+    refreshLabelsWhenFontReady();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,9 +102,15 @@ export function GameShell() {
 
   return (
     <>
-      <GameCanvas inputRef={vector} debugElementId={showDebug ? DEBUG_ID : undefined} />
+      <GameCanvas
+        inputRef={vector}
+        yawTarget={yawTarget}
+        pitchTarget={pitchTarget}
+        zoomTarget={zoomTarget}
+        debugElementId={showDebug ? DEBUG_ID : undefined} />
       <Hud />
       <VirtualStick stick={stick} />
+      <ControlHint />
       {showDebug && (
         <div
           id={DEBUG_ID}

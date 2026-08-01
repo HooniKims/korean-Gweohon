@@ -1,21 +1,25 @@
 "use client";
 
+import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { BallCollider, RigidBody, type RapierRigidBody } from "@react-three/rapier";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { canPickUp, speedMultiplier } from "@/game/growth";
 import { isTouching, placeSpawns } from "@/game/layout";
-import { torqueForInput } from "@/game/rolling";
+import { rotateInput, torqueForInput } from "@/game/rolling";
 import { useGameStore } from "@/store/gameStore";
-import type { InputRef } from "@/input/useInput";
-import { ballMotion, ballPosition } from "./ballTracker";
+import { KEY_ROTATE_SPEED, type InputRef, type NumberRef } from "@/input/useInput";
+import { Mesh, type Object3D } from "three";
+import { ballMotion, ballPosition, cameraState, coreDebug } from "./ballTracker";
+import { measureModel } from "./measureModel";
+import { CORE_MODEL } from "./modelRegistry";
 import { AttachedWord } from "./WordObject";
 
 /**
  * 토크 계수. 관성모멘트(I ∝ m·r²)에 비례해 토크를 주므로 공이 커져도
  * 각가속도가 일정하다. 체감 속도는 플레이테스트에서 이 값으로 조율한다.
  */
-const TORQUE_K = 26;
+const TORQUE_K = 85;
 /**
  * 최대 각속도. 공이 통제 불능으로 빨라지는 것을 막는다.
  * 선속도는 ω·r이므로 5cm 공은 약 0.8m/s, 20cm 공은 3.2m/s까지 난다.
@@ -24,9 +28,45 @@ const TORQUE_K = 26;
  * 1/15로 떨어졌다. 감쇠를 낮춰 빠르게 만들면 공이 미끄러워 목표를 지나치고
  * 궤도를 돈다. 굴리는 재미는 속도보다 「멈출 수 있는가」에 달려 있다.
  */
-const MAX_ANGULAR_SPEED = 32;
+const MAX_ANGULAR_SPEED = 46;
+/** 이 높이보다 아래로 떨어지면 필드 밖으로 나간 것으로 본다. */
+const FALL_LIMIT_Y = -0.6;
 
-export function Katamari({ inputRef }: { inputRef: InputRef }) {
+/**
+ * 카타마리 코어. 품사색 틴트 대상이 아니라 Tripo 원본 색을 그대로 쓴다.
+ * 지름이 바뀔 때만 스케일을 다시 계산한다(부착 순간에만 일어남).
+ */
+function KatamariCore({ radius }: { radius: number }) {
+  const { scene } = useGLTF(CORE_MODEL);
+
+  const { object, scale } = useMemo(() => {
+    const object: Object3D = scene.clone(true);
+    object.traverse((child) => {
+      const mesh = child as Mesh;
+      if (mesh.isMesh) mesh.castShadow = true;
+    });
+    const bounds = measureModel(object);
+    object.position.set(-bounds.center.x, -bounds.center.y, -bounds.center.z);
+    const scale = (radius * 2) / bounds.longest;
+    coreDebug.baseSize = bounds.longest;
+    coreDebug.scale = scale;
+    return { object, scale };
+  }, [scene, radius]);
+
+  return (
+    <group scale={scale}>
+      <primitive object={object} />
+    </group>
+  );
+}
+
+export function Katamari({
+  inputRef,
+  yawTarget
+}: {
+  inputRef: InputRef;
+  yawTarget: NumberRef;
+}) {
   const body = useRef<RapierRigidBody>(null);
 
   const spawns = useGameStore((st) => st.spawns);
@@ -35,8 +75,26 @@ export function Katamari({ inputRef }: { inputRef: InputRef }) {
   const diameterM = useGameStore((st) => st.diameterM);
   const radius = diameterM / 2;
 
+  // Q·E 키 회전 상태. 리렌더를 유발하지 않도록 ref로 둔다.
+  const keyRotate = useRef(0);
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.code === "KeyQ") keyRotate.current = -1;
+      if (e.code === "KeyE") keyRotate.current = 1;
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.code === "KeyQ" || e.code === "KeyE") keyRotate.current = 0;
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, []);
+
   // Field와 같은 좌표를 써야 한다. game/layout이 유일한 출처다.
-  const points = useMemo(() => placeSpawns(spawns.map((s) => s.sizeM)), [spawns]);
+  const points = useMemo(() => placeSpawns(spawns.map((s) => ({ sizeM: s.sizeM, isTarget: s.isTarget }))), [spawns]);
 
   useFrame((_, delta) => {
     const rb = body.current;
@@ -51,8 +109,20 @@ export function Katamari({ inputRef }: { inputRef: InputRef }) {
     const lv = rb.linvel();
     const av = rb.angvel();
     ballMotion.speed = Math.hypot(lv.x, lv.z);
+    if (ballMotion.speed > 0.02) {
+      ballMotion.dirX = lv.x;
+      ballMotion.dirZ = lv.z;
+    }
     ballMotion.angularSpeed = Math.hypot(av.x, av.y, av.z);
     ballMotion.fps = delta > 0 ? 1 / delta : 0;
+
+    // 어떤 이유로든 필드 밖으로 떨어지면 되돌린다. 끝없이 떨어지면 판이 죽는다.
+    if (t.y < FALL_LIMIT_Y) {
+      rb.setTranslation({ x: 0, y: 0.4, z: 0 }, true);
+      rb.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      rb.setAngvel({ x: 0, y: 0, z: 0 }, true);
+      return;
+    }
 
     const s = useGameStore.getState();
     if (s.phase !== "playing") return;
@@ -74,8 +144,15 @@ export function Katamari({ inputRef }: { inputRef: InputRef }) {
       break; // 한 프레임에 하나만 붙인다
     }
 
-    const v = inputRef.current;
-    if (v.x === 0 && v.y === 0) return;
+    // Q·E 로도 시점을 돌린다
+    if (keyRotate.current !== 0) {
+      yawTarget.current += keyRotate.current * KEY_ROTATE_SPEED * delta;
+    }
+
+    const raw = inputRef.current;
+    if (raw.x === 0 && raw.y === 0) return;
+    // 카메라가 돈 만큼 입력도 돌려야 「화면 위 = 앞으로」가 유지된다
+    const v = rotateInput(raw, cameraState.yaw);
 
     // 각속도 상한에 걸렸으면 더 밀지 않는다
     if (ballMotion.angularSpeed > MAX_ANGULAR_SPEED) return;
@@ -94,22 +171,21 @@ export function Katamari({ inputRef }: { inputRef: InputRef }) {
       name="katamari"
       colliders={false}
       position={[0, 0.4, 0]}
-      linearDamping={0.35}
-      angularDamping={0.5}
+      linearDamping={0.08}
+      angularDamping={0.12}
       friction={1.4}
       restitution={0.05}
     >
       {/* 지름이 바뀔 때만 콜라이더가 다시 만들어진다 (부착 순간에만 일어남) */}
       <BallCollider args={[radius]} />
-      <mesh castShadow scale={radius}>
-        <sphereGeometry args={[1, 20, 16]} />
-        <meshStandardMaterial color="#f4c542" flatShading roughness={0.7} />
-      </mesh>
+      <KatamariCore radius={radius} />
       {attachedIds.map((id) => {
         const spawn = spawns[id];
         const dir = attachDirs[id];
         if (!spawn || !dir) return null;
-        return <AttachedWord key={id} spawn={spawn} dir={dir} ballRadius={radius} />;
+        return (
+          <AttachedWord key={id} index={id} spawn={spawn} dir={dir} ballRadius={radius} />
+        );
       })}
     </RigidBody>
   );

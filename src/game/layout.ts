@@ -1,7 +1,13 @@
-/** 필드 반경(미터). 공이 5cm에서 시작해 90초 안에 훑을 수 있는 크기여야 한다. */
-export const FIELD_RADIUS = 3.2;
+/**
+ * 필드 반경(미터).
+ *
+ * 넓으면 사물이 흩어져 화면에 한두 개만 보이고, 학생은 목표를 찾지 못한다.
+ * 괴혼의 시작 구간은 자잘한 물건으로 빽빽하다. 5cm 공의 시야(약 1m)에 사물이
+ * 서너 개 들어오도록 좁게 잡는다.
+ */
+export const FIELD_RADIUS = 2.0;
 /** 시작 지점 주변은 비워서 공이 큰 사물에 갇히지 않게 한다. */
-export const START_CLEARANCE = 0.35;
+export const START_CLEARANCE = 0.22;
 
 export type SpawnPoint = { x: number; z: number };
 
@@ -12,27 +18,44 @@ function ringRadius(rank: number, count: number): number {
   return START_CLEARANCE + span * Math.sqrt((rank + 0.6) / count);
 }
 
-/**
- * 사물을 필드에 배치한다. 작은 것이 중앙, 큰 것이 바깥이다.
- *
- * planSpawns가 목록을 섞기 때문에 순번 그대로 반경을 주면 60cm 의자가 5cm 공
- * 옆에 놓여 시작부터 길을 막는다. 크기순으로 자리를 배정해서 막는다.
- *
- * 반환 배열의 인덱스는 입력 sizes의 인덱스와 대응한다. 렌더와 부착 판정이
- * 같은 좌표를 써야 하므로 이 함수가 유일한 출처다.
- */
-export function placeSpawns(sizes: readonly number[]): SpawnPoint[] {
-  const golden = Math.PI * (3 - Math.sqrt(5));
-  const order = sizes
-    .map((size, index) => ({ index, size }))
-    .sort((a, b) => a.size - b.size || a.index - b.index);
+export type Placeable = { sizeM: number; isTarget: boolean };
 
-  const out: SpawnPoint[] = new Array(sizes.length);
-  order.forEach(({ index }, rank) => {
-    const r = ringRadius(rank, sizes.length);
-    const a = rank * golden;
-    out[index] = { x: Math.cos(a) * r, z: Math.sin(a) * r };
-  });
+const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+
+/**
+ * 사물을 필드에 배치한다.
+ *
+ * 목표와 오답을 각각 별도 나선에 올린다. 하나의 나선에 크기순으로 올리면 작은
+ * 오답이 중앙을 다 차지해서 첫 목표가 1m 넘게 떨어진다. 학생이 시작하자마자
+ * 오답만 마주치면 무엇을 하는 게임인지 알 수 없다.
+ *
+ * 각 무리 안에서는 작은 것이 중앙, 큰 것이 바깥이다. 공이 자라는 순서와 이동
+ * 방향이 맞아떨어져서 자연스럽게 밖으로 퍼져 나간다.
+ *
+ * 반환 배열의 인덱스는 입력 인덱스와 대응한다. 렌더와 부착 판정이 같은 좌표를
+ * 써야 하므로 이 함수가 유일한 출처다.
+ */
+export function placeSpawns(items: readonly Placeable[]): SpawnPoint[] {
+  const out: SpawnPoint[] = new Array(items.length);
+
+  const groups: { indices: number[]; angleOffset: number }[] = [
+    { indices: [], angleOffset: 0 },
+    { indices: [], angleOffset: Math.PI }
+  ];
+  items.forEach((it, i) => groups[it.isTarget ? 0 : 1].indices.push(i));
+
+  for (const group of groups) {
+    const ordered = group.indices
+      .map((index) => ({ index, size: items[index].sizeM }))
+      .sort((a, b) => a.size - b.size || a.index - b.index);
+
+    ordered.forEach(({ index }, rank) => {
+      const r = ringRadius(rank, ordered.length);
+      const a = rank * GOLDEN + group.angleOffset;
+      out[index] = { x: Math.cos(a) * r, z: Math.sin(a) * r };
+    });
+  }
+
   return out;
 }
 

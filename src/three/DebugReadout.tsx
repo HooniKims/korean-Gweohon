@@ -5,7 +5,8 @@ import { useMemo } from "react";
 import { canPickUp } from "@/game/growth";
 import { placeSpawns } from "@/game/layout";
 import { useGameStore } from "@/store/gameStore";
-import { ballMotion, ballPosition } from "./ballTracker";
+import { ballMotion, ballPosition, coreDebug, rollerDebug } from "./ballTracker";
+import { measureFailures } from "./measureModel";
 
 /**
  * 조작 감각과 부착 판정을 수치로 보여준다. 플레이테스트에서 파라미터를 조율할 때 쓴다.
@@ -15,7 +16,7 @@ import { ballMotion, ballPosition } from "./ballTracker";
  */
 export function DebugReadout({ elementId }: { elementId: string }) {
   const spawns = useGameStore((s) => s.spawns);
-  const points = useMemo(() => placeSpawns(spawns.map((s) => s.sizeM)), [spawns]);
+  const points = useMemo(() => placeSpawns(spawns.map((s) => ({ sizeM: s.sizeM, isTarget: s.isTarget }))), [spawns]);
 
   useFrame(() => {
     const el = document.getElementById(elementId);
@@ -47,7 +48,10 @@ export function DebugReadout({ elementId }: { elementId: string }) {
       `d ${(d * 100).toFixed(1)}cm`,
       `pos ${ballPosition.x.toFixed(2)},${ballPosition.z.toFixed(2)}`,
       `스폰 ${s.spawns.length} 붙음 ${s.attachedIds.length}`,
-      `최근접 ${nearestName} ${Number.isFinite(nearestGap) ? nearestGap.toFixed(3) : "없음"}m`
+      `최근접 ${nearestName} ${Number.isFinite(nearestGap) ? nearestGap.toFixed(3) : "없음"}m`,
+      `roller s${rollerDebug.scale.toFixed(2)} @${rollerDebug.x.toFixed(2)},${rollerDebug.z.toFixed(2)} h${rollerDebug.height.toFixed(3)}`,
+      `core ${coreDebug.baseSize.toFixed(2)}/${coreDebug.scale.toFixed(4)}`,
+      `측정실패 ${measureFailures.count} ${measureFailures.last.replace("/models/", "")}`
     ].join("  ·  ");
   });
 

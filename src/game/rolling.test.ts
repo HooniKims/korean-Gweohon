@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { torqueForInput } from "./rolling";
+import { rotateInput, torqueForInput } from "./rolling";
 
 /**
  * 토크에서 실제 이동 방향을 되돌려 계산한다.
@@ -61,5 +61,40 @@ describe("torqueForInput", () => {
     const a = torqueForInput({ x: 0, y: -1 }, 1);
     const b = torqueForInput({ x: 0, y: -1 }, 4);
     expect(b.x).toBeCloseTo(a.x * 4, 10);
+  });
+});
+
+describe("rotateInput", () => {
+  it("yaw가 0이면 그대로 둔다", () => {
+    const v = rotateInput({ x: 0.3, y: -0.7 }, 0);
+    expect(v.x).toBeCloseTo(0.3, 10);
+    expect(v.y).toBeCloseTo(-0.7, 10);
+  });
+
+  it("카메라가 90도 돌면 입력도 90도 돈다", () => {
+    // yaw=90°: 카메라가 +X 쪽에 있고 화면 위는 -X를 향한다
+    const v = rotateInput({ x: 0, y: -1 }, Math.PI / 2);
+    expect(v.x).toBeCloseTo(-1, 10);
+    expect(v.y).toBeCloseTo(0, 10);
+  });
+
+  it("180도 돌면 앞뒤가 뒤집힌다", () => {
+    const v = rotateInput({ x: 0, y: -1 }, Math.PI);
+    expect(v.x).toBeCloseTo(0, 10);
+    expect(v.y).toBeCloseTo(1, 10);
+  });
+
+  it("크기를 바꾸지 않는다", () => {
+    const src = { x: 0.6, y: -0.8 };
+    for (const yaw of [0, 0.7, 2.1, -1.3, 5.5]) {
+      const v = rotateInput(src, yaw);
+      expect(Math.hypot(v.x, v.y)).toBeCloseTo(1, 10);
+    }
+  });
+
+  it("입력이 없으면 회전해도 없다", () => {
+    const v = rotateInput({ x: 0, y: 0 }, 1.2);
+    expect(Math.abs(v.x)).toBeCloseTo(0, 10);
+    expect(Math.abs(v.y)).toBeCloseTo(0, 10);
   });
 });

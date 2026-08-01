@@ -5,3 +5,7 @@ node_modules/
 .gstack/
 next-env.d.ts
 tsconfig.tsbuildinfo
+
+# Tripo 원본 GLB (약 430MB). 디스크에 보관하고 git에는 넣지 않는다.
+# 압축본만 public/models/ 로 커밋한다.
+assets/tripo/raw/*.glb

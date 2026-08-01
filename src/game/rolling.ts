@@ -18,3 +18,22 @@ export type Torque = { x: number; y: number; z: number };
 export function torqueForInput(input: InputVector, strength: number): Torque {
   return { x: input.y * strength, y: 0, z: -input.x * strength };
 }
+
+/**
+ * 화면 기준 입력을 카메라가 바라보는 방향 기준으로 돌린다.
+ *
+ * 카메라가 공 뒤를 따라 회전하므로, 돌리지 않으면 카메라가 돈 만큼 조작이
+ * 어긋난다. 이 변환을 거치면 카메라가 어느 방향을 보든 「화면 위로 밀면 앞으로」가
+ * 항상 성립한다. 조작을 처음 잡는 학생에게 이게 제일 중요하다.
+ *
+ * yaw는 카메라가 공에서 떨어져 있는 방향각이다. yaw=0이면 카메라가 +Z에 있고
+ * 화면 위가 -Z를 향한다(회전 없던 시절과 같다).
+ */
+export function rotateInput(input: InputVector, yaw: number): InputVector {
+  const c = Math.cos(yaw);
+  const s = Math.sin(yaw);
+  return {
+    x: input.x * c + input.y * s,
+    y: -input.x * s + input.y * c
+  };
+}

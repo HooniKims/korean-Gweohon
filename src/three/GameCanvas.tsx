@@ -3,20 +3,27 @@
 import { Canvas } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
 import { Suspense } from "react";
-import type { InputRef } from "@/input/useInput";
+import type { InputRef, NumberRef } from "@/input/useInput";
 import { ChaseCamera } from "./ChaseCamera";
 import { DebugReadout } from "./DebugReadout";
 import { Field } from "./Field";
 import { Katamari } from "./Katamari";
+import { Roller } from "./Roller";
 
 /** 화각이 넓으면 가까운 사물이 화면을 덮고 원근이 과장된다. */
 const CAMERA = { position: [0, 0.3, 0.6] as [number, number, number], fov: 42, near: 0.01, far: 200 };
 
 export function GameCanvas({
   inputRef,
+  yawTarget,
+  pitchTarget,
+  zoomTarget,
   debugElementId
 }: {
   inputRef: InputRef;
+  yawTarget: NumberRef;
+  pitchTarget: NumberRef;
+  zoomTarget: NumberRef;
   /** 값을 주면 그 id의 DOM에 계측값을 써넣는다. 플레이테스트용. */
   debugElementId?: string;
 }) {
@@ -44,11 +51,12 @@ export function GameCanvas({
       <Suspense fallback={null}>
         <Physics gravity={[0, -9.81, 0]}>
           <Field />
-          <Katamari inputRef={inputRef} />
+          <Katamari inputRef={inputRef} yawTarget={yawTarget} />
         </Physics>
+        <Roller />
       </Suspense>
 
-      <ChaseCamera />
+      <ChaseCamera yawTarget={yawTarget} pitchTarget={pitchTarget} zoomTarget={zoomTarget} />
       {debugElementId && <DebugReadout elementId={debugElementId} />}
     </Canvas>
   );

@@ -3,34 +3,66 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useRef } from "react";
 import { Vector3 } from "three";
+import type { NumberRef } from "@/input/useInput";
 import { useGameStore } from "@/store/gameStore";
-import { ballPosition } from "./ballTracker";
+import { ballPosition, cameraState } from "./ballTracker";
+
+/** 시선이 공보다 살짝 위를 향하게 해서 앞쪽 지면이 더 보이게 한다. */
+const LOOK_AHEAD_UP = 0.35;
 
 /**
- * 낮은 각도에서 공 뒤를 쫓는다. 공이 커지면 거리와 높이가 함께 늘어난다.
+ * 공 뒤를 쫓는 카메라.
  *
- * 카메라를 회전시키지 않는 것이 중요하다. 각도가 고정이면 「화면 위로 밀면
- * 앞으로」가 항상 성립해서, 조작을 처음 잡는 학생이 헷갈리지 않는다.
+ * 좌우 드래그로 사방을 돌아보고, 위아래 드래그로 시선 높이를 바꾸고,
+ * 핀치·휠로 확대·축소한다. 회전각은 cameraState에 남겨 Katamari가 입력을 같은
+ * 각도로 돌린다 — 그래야 카메라가 어디를 보든 「화면 위로 밀면 앞으로」가 성립한다.
  */
-export function ChaseCamera() {
+export function ChaseCamera({
+  yawTarget,
+  pitchTarget,
+  zoomTarget
+}: {
+  yawTarget: NumberRef;
+  pitchTarget: NumberRef;
+  zoomTarget: NumberRef;
+}) {
   const { camera } = useThree();
   const desired = useRef(new Vector3());
   const target = useRef(new Vector3());
+  const pitch = useRef(0.55);
+  const zoom = useRef(1);
 
   useFrame((_, delta) => {
-    // 공 지름에 비례해야 체감 크기가 일정하다. 상수항이 크면 작은 공일 때
-    // 카메라가 공 지름의 수십 배 거리에 있어서 공이 점처럼 보인다.
+    // 조작을 감쇠해서 따라간다. 즉시 반영하면 손 떨림이 그대로 화면에 나온다.
+    const t = 1 - Math.exp(-10 * delta);
+    cameraState.yaw += (yawTarget.current - cameraState.yaw) * t;
+    pitch.current += (pitchTarget.current - pitch.current) * t;
+    zoom.current += (zoomTarget.current - zoom.current) * t;
+
+    // 공 지름에 비례하되 상수항을 둔다. 상수항이 없으면 5cm 공에 카메라가 바짝
+    // 붙어 필드가 비어 보이고, 상수항만 크면 공이 점이 된다.
     const d = useGameStore.getState().diameterM;
-    const dist = 0.12 + d * 7;
-    const height = 0.06 + d * 3.5;
+    const range = (0.55 + d * 5) * zoom.current;
 
-    desired.current.set(ballPosition.x, ballPosition.y + height, ballPosition.z + dist);
+    const cosPitch = Math.cos(pitch.current);
+    const sinPitch = Math.sin(pitch.current);
+    const sinYaw = Math.sin(cameraState.yaw);
+    const cosYaw = Math.cos(cameraState.yaw);
 
-    // 감쇠를 걸어 부드럽게 따라간다. delta에 비례해 프레임률과 무관하게 만든다.
-    const t = 1 - Math.exp(-6 * delta);
-    camera.position.lerp(desired.current, t);
+    desired.current.set(
+      ballPosition.x + sinYaw * range * cosPitch,
+      ballPosition.y + range * sinPitch + d * 0.5,
+      ballPosition.z + cosYaw * range * cosPitch
+    );
 
-    target.current.set(ballPosition.x, ballPosition.y, ballPosition.z);
+    const follow = 1 - Math.exp(-8 * delta);
+    camera.position.lerp(desired.current, follow);
+
+    target.current.set(
+      ballPosition.x,
+      ballPosition.y + d * LOOK_AHEAD_UP,
+      ballPosition.z
+    );
     camera.lookAt(target.current);
   });
 
