@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { placeSpawns } from "@/game/layout";
 import { STAGES } from "@/game/stages";
+import { ballPosition } from "@/three/ballTracker";
 import { parseWordBank, planSpawns, type WordBank } from "@/game/words";
 import { useInput } from "@/input/useInput";
 import { VirtualStick } from "@/input/VirtualStick";
@@ -71,6 +73,16 @@ export function GameShell() {
   useEffect(() => {
     if (bank) begin(bank);
   }, [bank, begin]);
+
+  // ?debug=1 일 때만 내부를 노출한다. 플레이 밸런스를 스크립트로 검증할 때 쓴다.
+  useEffect(() => {
+    if (!showDebug) return;
+    (window as unknown as Record<string, unknown>).__gweohon = {
+      store: useGameStore,
+      placeSpawns,
+      ballPosition
+    };
+  }, [showDebug]);
 
   if (error) {
     return <main style={centered}>사전을 읽지 못했습니다: {error}</main>;

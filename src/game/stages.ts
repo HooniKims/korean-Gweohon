@@ -13,8 +13,11 @@ export const STAGES: StageDef[] = [
   {
     id: "singlePos:명사",
     targetPos: "명사",
-    targetCount: 20,
-    decoyCount: 40,
+    // 스펙은 20개였다. 자동 플레이 측정에서 90초에 12개였고, 학습 게임에서
+    // 반복 실패는 학습 동기를 깎으므로 15개로 내렸다. 교실 검증 후 재조정한다.
+    targetCount: 15,
+    // 오답이 많으면 작은 공에게 미로가 된다. 40개에서 24개로 내렸다.
+    decoyCount: 24,
     durationSec: 90
   }
 ];

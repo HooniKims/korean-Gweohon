@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { START_DIAMETER_M, canPickUp, grow } from "@/game/growth";
-import { TIER_DIAMETER_M } from "@/game/objectTiers";
 import {
   accuracy,
   applyHit,
@@ -86,7 +85,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const spawn = s.spawns[spawnIndex];
     if (!spawn) return;
 
-    const objectDiameterM = TIER_DIAMETER_M[spawn.tier];
+    const objectDiameterM = spawn.sizeM;
     if (!canPickUp(s.diameterM, objectDiameterM)) return;
 
     const verdict = judgePickup(spawn.entry, s.stage.targetPos);

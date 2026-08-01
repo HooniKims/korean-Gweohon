@@ -3,7 +3,6 @@
 import { RigidBody } from "@react-three/rapier";
 import { useMemo } from "react";
 import { POS_COLORS } from "@/game/pos";
-import { TIER_DIAMETER_M } from "@/game/objectTiers";
 import type { SpawnPlan } from "@/game/words";
 import { getLabelTexture } from "./labelTexture";
 
@@ -51,7 +50,7 @@ export type WordObjectProps = {
  * 이 바디는 공에 밀려 굴러다니는 물리 반응만 담당한다.
  */
 export function WordObject({ spawn, position, greyscale = false }: WordObjectProps) {
-  const size = TIER_DIAMETER_M[spawn.tier];
+  const size = spawn.sizeM;
   const color = greyscale ? "#9ca3af" : POS_COLORS[spawn.entry.pos];
 
   return (
@@ -77,7 +76,7 @@ export function AttachedWord({
   ballRadius: number;
   greyscale?: boolean;
 }) {
-  const size = TIER_DIAMETER_M[spawn.tier];
+  const size = spawn.sizeM;
   const color = greyscale ? "#9ca3af" : POS_COLORS[spawn.entry.pos];
   const d = ballRadius * 0.85;
   const position: [number, number, number] = [dir[0] * d, dir[1] * d, dir[2] * d];

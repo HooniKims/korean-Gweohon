@@ -14,8 +14,8 @@ const stage: StageDef = {
 };
 
 const spawns: SpawnPlan[] = [
-  { entry: { text: "학교", pos: "명사" }, tier: "XS", isTarget: true },
-  { entry: { text: "매우", pos: "부사" }, tier: "XS", isTarget: false }
+  { entry: { text: "학교", pos: "명사" }, tier: "XS", sizeM: 0.02, isTarget: true },
+  { entry: { text: "매우", pos: "부사" }, tier: "XS", sizeM: 0.02, isTarget: false }
 ];
 
 describe("Hud", () => {

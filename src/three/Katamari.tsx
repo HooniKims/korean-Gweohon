@@ -5,7 +5,6 @@ import { BallCollider, RigidBody, type RapierRigidBody } from "@react-three/rapi
 import { useMemo, useRef } from "react";
 import { canPickUp, speedMultiplier } from "@/game/growth";
 import { isTouching, placeSpawns } from "@/game/layout";
-import { TIER_DIAMETER_M } from "@/game/objectTiers";
 import { torqueForInput } from "@/game/rolling";
 import { useGameStore } from "@/store/gameStore";
 import type { InputRef } from "@/input/useInput";
@@ -19,7 +18,11 @@ import { AttachedWord } from "./WordObject";
 const TORQUE_K = 26;
 /**
  * 최대 각속도. 공이 통제 불능으로 빨라지는 것을 막는다.
- * 선속도는 ω·r이므로 5cm 공은 0.8m/s, 20cm 공은 3.2m/s까지 난다.
+ * 선속도는 ω·r이므로 5cm 공은 약 0.8m/s, 20cm 공은 3.2m/s까지 난다.
+ *
+ * 선속도 상한으로 바꿔 초반을 빠르게 해봤지만 자동 플레이 성적이 12/15에서
+ * 1/15로 떨어졌다. 감쇠를 낮춰 빠르게 만들면 공이 미끄러워 목표를 지나치고
+ * 궤도를 돈다. 굴리는 재미는 속도보다 「멈출 수 있는가」에 달려 있다.
  */
 const MAX_ANGULAR_SPEED = 32;
 
@@ -33,7 +36,7 @@ export function Katamari({ inputRef }: { inputRef: InputRef }) {
   const radius = diameterM / 2;
 
   // Field와 같은 좌표를 써야 한다. game/layout이 유일한 출처다.
-  const points = useMemo(() => placeSpawns(spawns.map((s) => s.tier)), [spawns]);
+  const points = useMemo(() => placeSpawns(spawns.map((s) => s.sizeM)), [spawns]);
 
   useFrame((_, delta) => {
     const rb = body.current;
@@ -64,7 +67,7 @@ export function Katamari({ inputRef }: { inputRef: InputRef }) {
       const spawn = s.spawns[i];
       const point = points[i];
       if (!spawn || !point) continue;
-      const objectDiameterM = TIER_DIAMETER_M[spawn.tier];
+      const objectDiameterM = spawn.sizeM;
       if (!canPickUp(s.diameterM, objectDiameterM)) continue;
       if (!isTouching(ball, point, objectDiameterM)) continue;
       s.pickUp(i);
@@ -75,8 +78,7 @@ export function Katamari({ inputRef }: { inputRef: InputRef }) {
     if (v.x === 0 && v.y === 0) return;
 
     // 각속도 상한에 걸렸으면 더 밀지 않는다
-    const w = rb.angvel();
-    if (Math.hypot(w.x, w.y, w.z) > MAX_ANGULAR_SPEED) return;
+    if (ballMotion.angularSpeed > MAX_ANGULAR_SPEED) return;
 
     // 부착밀이 많으면 느려진다
     const mul = speedMultiplier(s.misfits);

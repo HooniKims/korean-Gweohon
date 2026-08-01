@@ -4,7 +4,6 @@ import { useFrame } from "@react-three/fiber";
 import { useMemo } from "react";
 import { canPickUp } from "@/game/growth";
 import { placeSpawns } from "@/game/layout";
-import { TIER_DIAMETER_M } from "@/game/objectTiers";
 import { useGameStore } from "@/store/gameStore";
 import { ballMotion, ballPosition } from "./ballTracker";
 
@@ -16,7 +15,7 @@ import { ballMotion, ballPosition } from "./ballTracker";
  */
 export function DebugReadout({ elementId }: { elementId: string }) {
   const spawns = useGameStore((s) => s.spawns);
-  const points = useMemo(() => placeSpawns(spawns.map((s) => s.tier)), [spawns]);
+  const points = useMemo(() => placeSpawns(spawns.map((s) => s.sizeM)), [spawns]);
 
   useFrame(() => {
     const el = document.getElementById(elementId);
@@ -32,7 +31,7 @@ export function DebugReadout({ elementId }: { elementId: string }) {
       const spawn = s.spawns[i];
       const p = points[i];
       if (!spawn || !p) continue;
-      const od = TIER_DIAMETER_M[spawn.tier];
+      const od = spawn.sizeM;
       if (!canPickUp(d, od)) continue;
       const gap =
         Math.hypot(ballPosition.x - p.x, ballPosition.z - p.z) - (d / 2 + od / 2);

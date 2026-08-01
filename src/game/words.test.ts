@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseWordBank, planSpawns } from "./words";
-import { TIER_DIAMETER_M } from "./objectTiers";
+import { TIER_DIAMETER_M, TIER_RANGE_M } from "./objectTiers";
+import { START_DIAMETER_M, canPickUp, grow } from "./growth";
 import wordsJson from "../../public/data/words.json";
 
 const validRaw = {
@@ -151,30 +152,29 @@ describe("planSpawns", () => {
     expect(p.filter((x) => x.isTarget)).toHaveLength(0);
   });
 
-  it("목표 단어에는 L티어를 주지 않는다", () => {
-    // L(60cm)은 90초 안에 공이 도달할 수 없다. 목표에 배정되면 클리어가 불가능해진다.
+  it("첫 목표는 시작 지름으로 바로 붙일 수 있다", () => {
     const p = planSpawns(parseWordBank(wordsJson), {
       targetPos: "명사",
       targetCount: 20,
       decoyCount: 40,
       rng: Math.random
     });
-    for (const x of p.filter((y) => y.isTarget)) {
-      expect(x.tier).not.toBe("L");
-    }
+    const smallest = Math.min(...p.filter((y) => y.isTarget).map((y) => y.sizeM));
+    expect(canPickUp(START_DIAMETER_M, smallest)).toBe(true);
   });
 
-  it("목표 단어의 절반 이상은 XS나 S다", () => {
-    // 초반에 붙을 것이 없으면 공이 자라지 못해 판이 막힌다.
+  it("목표 크기가 오름차순 사다리를 이룬다", () => {
     const p = planSpawns(parseWordBank(wordsJson), {
       targetPos: "명사",
       targetCount: 20,
       decoyCount: 40,
       rng: Math.random
     });
-    const targets = p.filter((y) => y.isTarget);
-    const small = targets.filter((y) => y.tier === "XS" || y.tier === "S");
-    expect(small.length).toBeGreaterThanOrEqual(targets.length / 2);
+    const sizes = p.filter((y) => y.isTarget).map((y) => y.sizeM).sort((a, b) => a - b);
+    // 인접 단계가 1.1배(부착 한계)를 넘게 벌어지면 사다리가 끊긴다
+    for (let i = 1; i < sizes.length; i += 1) {
+      expect(sizes[i] / sizes[i - 1]).toBeLessThan(1.2);
+    }
   });
 
   it("오답에는 L티어가 섞여 배경 역할을 한다", () => {
@@ -218,5 +218,70 @@ describe("public/data/words.json", () => {
   it("서술격 조사 「이다」를 담지 않는다", () => {
     const bank = parseWordBank(wordsJson);
     expect(bank.words.some((w) => w.text === "이다")).toBe(false);
+  });
+});
+
+describe("성장 사다리", () => {
+  /**
+   * 명사 스테이지를 완주할 수 있는가. 목표 20개를 작은 것부터 순서대로 먹으며
+   * 매 단계에서 「지금 공으로 붙일 수 있는가」를 확인한다.
+   *
+   * 이 테스트가 이 게임의 클리어 가능성을 지킨다. 티어 크기를 하나로 고정하면
+   * 5cm 공이 7cm 사물을 못 먹고 필드의 2cm 사물을 다 먹어도 자라지 못해 막힌다.
+   */
+  it("명사 20개를 순서대로 다 먹을 수 있다", () => {
+    const bank = parseWordBank(wordsJson);
+    const plan = planSpawns(bank, {
+      targetPos: "명사",
+      targetCount: 20,
+      decoyCount: 40,
+      rng: Math.random
+    });
+
+    const targets = plan
+      .filter((p) => p.isTarget)
+      .map((p) => p.sizeM)
+      .sort((a, b) => a - b);
+
+    let d = START_DIAMETER_M;
+    const blocked: number[] = [];
+    for (const size of targets) {
+      if (!canPickUp(d, size)) {
+        blocked.push(size);
+        continue;
+      }
+      d = grow(d, size);
+    }
+
+    expect(blocked).toEqual([]);
+    expect(d).toBeGreaterThan(START_DIAMETER_M);
+  });
+
+  it("목표 크기가 티어 구간 안에 퍼져 있다", () => {
+    const bank = parseWordBank(wordsJson);
+    const plan = planSpawns(bank, {
+      targetPos: "명사",
+      targetCount: 20,
+      decoyCount: 40,
+      rng: Math.random
+    });
+    const sizes = new Set(plan.filter((p) => p.isTarget).map((p) => p.sizeM));
+    // 크기가 하나로 뭉쳐 있으면 사다리가 끊긴다
+    expect(sizes.size).toBeGreaterThan(5);
+  });
+
+  it("오답 크기는 티어 구간 안에 있다", () => {
+    const bank = parseWordBank(wordsJson);
+    const plan = planSpawns(bank, {
+      targetPos: "명사",
+      targetCount: 20,
+      decoyCount: 40,
+      rng: Math.random
+    });
+    for (const p of plan.filter((x) => !x.isTarget)) {
+      const [lo, hi] = TIER_RANGE_M[p.tier];
+      expect(p.sizeM).toBeGreaterThanOrEqual(lo);
+      expect(p.sizeM).toBeLessThanOrEqual(hi);
+    }
   });
 });

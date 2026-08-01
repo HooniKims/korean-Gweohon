@@ -12,9 +12,9 @@ const stage: StageDef = {
 };
 
 const spawns: SpawnPlan[] = [
-  { entry: { text: "학교", pos: "명사" }, tier: "XS", isTarget: true },
-  { entry: { text: "하늘", pos: "명사" }, tier: "XS", isTarget: true },
-  { entry: { text: "매우", pos: "부사" }, tier: "XS", isTarget: false }
+  { entry: { text: "학교", pos: "명사" }, tier: "XS", sizeM: 0.02, isTarget: true },
+  { entry: { text: "하늘", pos: "명사" }, tier: "XS", sizeM: 0.02, isTarget: true },
+  { entry: { text: "매우", pos: "부사" }, tier: "XS", sizeM: 0.02, isTarget: false }
 ];
 
 const s = () => useGameStore.getState();
@@ -70,7 +70,7 @@ describe("gameStore", () => {
 
   it("공보다 너무 큰 것은 붙지 않는다", () => {
     const bigSpawns: SpawnPlan[] = [
-      { entry: { text: "의자", pos: "명사" }, tier: "L", isTarget: true }
+      { entry: { text: "의자", pos: "명사" }, tier: "L", sizeM: 0.6, isTarget: true }
     ];
     s().startStage(stage, bigSpawns);
     s().pickUp(0);

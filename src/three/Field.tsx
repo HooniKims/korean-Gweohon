@@ -3,7 +3,6 @@
 import { RigidBody } from "@react-three/rapier";
 import { useMemo } from "react";
 import { FIELD_RADIUS, placeSpawns } from "@/game/layout";
-import { TIER_DIAMETER_M } from "@/game/objectTiers";
 import { useGameStore } from "@/store/gameStore";
 import { WordObject } from "./WordObject";
 
@@ -41,7 +40,7 @@ export function Field() {
   const attachedIds = useGameStore((s) => s.attachedIds);
 
   // 배치는 game/layout이 유일한 출처다. Katamari의 부착 판정도 같은 좌표를 쓴다.
-  const points = useMemo(() => placeSpawns(spawns.map((s) => s.tier)), [spawns]);
+  const points = useMemo(() => placeSpawns(spawns.map((s) => s.sizeM)), [spawns]);
 
   return (
     <>
@@ -59,7 +58,7 @@ export function Field() {
         const p = points[i];
         if (!p) return null;
         // 큰 사물은 바닥에 닿게 y를 올려준다
-        const y = TIER_DIAMETER_M[spawn.tier] * 0.4;
+        const y = spawn.sizeM * 0.4;
         return <WordObject key={i} spawn={spawn} position={[p.x, y, p.z]} />;
       })}
     </>
