@@ -2,3 +2,6 @@ node_modules/
 .next/
 .DS_Store
 *.local
+.gstack/
+next-env.d.ts
+tsconfig.tsbuildinfo
