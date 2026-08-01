@@ -11,6 +11,7 @@ import { GameCanvas } from "@/three/GameCanvas";
 import { refreshLabelsWhenFontReady } from "@/three/labelTexture";
 import { preloadModels } from "@/three/modelRegistry";
 import { useGameStore } from "@/store/gameStore";
+import { CameraPad } from "./CameraPad";
 import { ControlHint } from "./ControlHint";
 import { Hud } from "./Hud";
 import { ResultScreen } from "./ResultScreen";
@@ -111,6 +112,11 @@ export function GameShell() {
       <Hud />
       <VirtualStick stick={stick} />
       <ControlHint />
+      <CameraPad
+        yawTarget={yawTarget}
+        pitchTarget={pitchTarget}
+        zoomTarget={zoomTarget}
+      />
       {showDebug && (
         <div
           id={DEBUG_ID}

@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { canPickUp } from "@/game/growth";
 import { placeSpawns } from "@/game/layout";
 import { useGameStore } from "@/store/gameStore";
-import { ballMotion, ballPosition, coreDebug, rollerDebug } from "./ballTracker";
+import { ballMotion, ballPosition, cameraState, coreDebug, rollerDebug } from "./ballTracker";
 import { measureFailures } from "./measureModel";
 
 /**
@@ -50,7 +50,7 @@ export function DebugReadout({ elementId }: { elementId: string }) {
       `스폰 ${s.spawns.length} 붙음 ${s.attachedIds.length}`,
       `최근접 ${nearestName} ${Number.isFinite(nearestGap) ? nearestGap.toFixed(3) : "없음"}m`,
       `roller s${rollerDebug.scale.toFixed(2)} @${rollerDebug.x.toFixed(2)},${rollerDebug.z.toFixed(2)} h${rollerDebug.height.toFixed(3)}`,
-      `core ${coreDebug.baseSize.toFixed(2)}/${coreDebug.scale.toFixed(4)}`,
+      `cam yaw ${cameraState.yaw.toFixed(2)} pitch ${cameraState.pitch.toFixed(2)} zoom ${cameraState.zoom.toFixed(2)}`,
       `측정실패 ${measureFailures.count} ${measureFailures.last.replace("/models/", "")}`
     ].join("  ·  ");
   });

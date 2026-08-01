@@ -29,7 +29,7 @@ export const ballMotion = {
  * 카메라가 진행 방향을 따라 돌기 때문에, 입력을 이 각도만큼 돌려야 조작이 어긋나지
  * 않는다. yaw=0이면 카메라가 +Z에 있고 화면 위가 -Z를 향한다.
  */
-export const cameraState = { yaw: 0 };
+export const cameraState = { yaw: 0, pitch: 0.55, zoom: 1 };
 
 /** 캐릭터 크기 진단용. 스케일이 폭주하면 여기서 보인다. */
 export const rollerDebug = { baseSize: 0, height: 0, scale: 0, x: 0, y: 0, z: 0 };

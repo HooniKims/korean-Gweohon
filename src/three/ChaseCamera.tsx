@@ -38,6 +38,8 @@ export function ChaseCamera({
     cameraState.yaw += (yawTarget.current - cameraState.yaw) * t;
     pitch.current += (pitchTarget.current - pitch.current) * t;
     zoom.current += (zoomTarget.current - zoom.current) * t;
+    cameraState.pitch = pitch.current;
+    cameraState.zoom = zoom.current;
 
     // 공 지름에 비례하되 상수항을 둔다. 상수항이 없으면 5cm 공에 카메라가 바짝
     // 붙어 필드가 비어 보이고, 상수항만 크면 공이 점이 된다.

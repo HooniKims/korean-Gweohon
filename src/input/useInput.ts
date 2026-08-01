@@ -41,6 +41,16 @@ function clamp(v: number, lo: number, hi: number): number {
 }
 
 /**
+ * 화면 위 조작 UI에서 시작한 입력인지 본다.
+ *
+ * 시점 패드를 만졌는데 이동 스틱까지 같이 잡히면 공이 제멋대로 굴러간다.
+ * UI에는 data-ui 속성을 달아 두고 여기서 걸러낸다.
+ */
+function fromUi(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest("[data-ui]") !== null;
+}
+
+/**
  * 이동과 시점 회전을 함께 다룬다.
  *
  * - 이동: 첫 손가락(플로팅 스틱) / 방향키·WASD
@@ -96,6 +106,7 @@ export function useInput(): InputHandles {
     };
 
     const onTouchStart = (e: TouchEvent) => {
+      if (fromUi(e.target)) return;
       for (const t of Array.from(e.changedTouches)) {
         if (moveTouchId.current === null) {
           moveTouchId.current = t.identifier;
@@ -164,6 +175,7 @@ export function useInput(): InputHandles {
     };
 
     const onMouseDown = (e: MouseEvent) => {
+      if (fromUi(e.target)) return;
       mouseDown.current = true;
       mouseLastX.current = e.clientX;
       mouseLastY.current = e.clientY;
