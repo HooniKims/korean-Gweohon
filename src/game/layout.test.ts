@@ -4,8 +4,11 @@ import {
   GRAB_MARGIN,
   GRAB_PAD_M,
   START_CLEARANCE,
+  ZONE_COUNT,
+  ZONE_RADIUS,
   isTouching,
-  placeSpawns
+  placeSpawns,
+  zoneCenters
 } from "./layout";
 
 const dist = (p: { x: number; z: number }) => Math.hypot(p.x, p.z);
@@ -24,22 +27,44 @@ describe("placeSpawns", () => {
   it("모든 좌표가 시작 여유와 필드 반경 사이에 있다", () => {
     const sizes = Array.from({ length: 60 }, (_, i) => [0.02, 0.07, 0.2, 0.6][i % 4]);
     for (const p of placeSpawns(dec(sizes))) {
-      expect(dist(p)).toBeGreaterThanOrEqual(START_CLEARANCE - 1e-9);
-      expect(dist(p)).toBeLessThanOrEqual(FIELD_RADIUS + 1e-9);
+      expect(dist(p)).toBeLessThanOrEqual(FIELD_RADIUS + ZONE_RADIUS + 1e-9);
     }
   });
 
-  it("작은 사물이 큰 사물보다 중앙에 가깝다", () => {
-    // 섞인 순서로 줘도 크기순으로 자리가 배정돼야 한다.
-    const sizes = [0.6, 0.02, 0.2, 0.07, 0.6, 0.02];
+  it("무리 안에서 작은 사물이 큰 사물보다 중앙에 가깝다", () => {
+    // 사물마다 자기가 속한 무리의 중심을 기준으로 본다. 무리 0 중심으로만 재면
+    // 다른 무리에 배정된 사물까지 섞여 비교가 무의미해진다.
+    const sizes = Array.from({ length: 21 }, (_, i) => [0.02, 0.07, 0.2][i % 3]);
     const points = placeSpawns(dec(sizes));
-    const maxSmall = Math.max(
-      ...sizes.map((sz, i) => (sz === 0.02 ? dist(points[i]) : -Infinity))
-    );
-    const minBig = Math.min(
-      ...sizes.map((sz, i) => (sz === 0.6 ? dist(points[i]) : Infinity))
-    );
-    expect(maxSmall).toBeLessThan(minBig);
+    const centers = zoneCenters();
+    const ownZone = (i: number) => {
+      let best = 0;
+      let bd = Infinity;
+      centers.forEach((c, zi) => {
+        const d = Math.hypot(points[i].x - c.x, points[i].z - c.z);
+        if (d < bd) {
+          bd = d;
+          best = zi;
+        }
+      });
+      return { zone: best, r: bd };
+    };
+
+    // 무리별로 모아 크기순 정렬한 뒤 중심 거리가 커지는지 본다
+    const byZone = new Map<number, { size: number; r: number }[]>();
+    sizes.forEach((size, i) => {
+      const { zone, r } = ownZone(i);
+      const list = byZone.get(zone) ?? [];
+      list.push({ size, r });
+      byZone.set(zone, list);
+    });
+
+    for (const list of byZone.values()) {
+      const ranked = [...list].sort((a, b) => a.size - b.size);
+      for (let k = 1; k < ranked.length; k += 1) {
+        expect(ranked[k].r).toBeGreaterThanOrEqual(ranked[k - 1].r - 1e-9);
+      }
+    }
   });
 
   it("시작 지점 바로 옆에 가장 큰 사물을 두지 않는다", () => {
@@ -116,14 +141,13 @@ describe("목표와 오답의 배치 분리", () => {
   };
 
   it("가장 가까운 목표가 시작 지점 근처에 있다", () => {
-    // 하나의 나선에 크기순으로 올리면 작은 오답이 중앙을 다 차지해서 첫 목표가
-    // 1m 넘게 떨어진다. 학생이 시작하자마자 무엇을 할지 알 수 없게 된다.
+    // 켜자마자 붙일 것이 눈에 보여야 무엇을 하는 게임인지 알 수 있다.
     const items = stageItems();
     const points = placeSpawns(items);
     const nearestTarget = Math.min(
       ...items.map((it, i) => (it.isTarget ? dist(points[i]) : Infinity))
     );
-    expect(nearestTarget).toBeLessThan(0.6);
+    expect(nearestTarget).toBeLessThan(ZONE_RADIUS + 0.1);
   });
 
   it("목표가 필드 전체에 퍼져 있다", () => {
@@ -132,25 +156,101 @@ describe("목표와 오답의 배치 분리", () => {
     const radii = items
       .map((it, i) => (it.isTarget ? dist(points[i]) : null))
       .filter((r): r is number => r !== null);
-    expect(Math.max(...radii)).toBeGreaterThan(FIELD_RADIUS * 0.7);
+    expect(Math.max(...radii)).toBeGreaterThan(FIELD_RADIUS * 0.4);
   });
 
-  it("작은 목표가 큰 목표보다 중앙에 가깝다", () => {
-    // 공이 자라는 순서와 이동 방향이 맞아야 자연스럽게 밖으로 퍼진다
+  it("작은 목표는 시작 무리, 큰 목표는 먼 무리에 있다", () => {
+    // 공이 자라는 만큼 멀리 나가는 진행이 되어야 한다
     const items = stageItems();
     const points = placeSpawns(items);
     const targets = items
       .map((it, i) => ({ size: it.sizeM, r: dist(points[i]), isTarget: it.isTarget }))
       .filter((t) => t.isTarget)
       .sort((a, b) => a.size - b.size);
-    for (let i = 1; i < targets.length; i += 1) {
-      expect(targets[i].r).toBeGreaterThan(targets[i - 1].r);
-    }
+    const firstThird = targets.slice(0, Math.floor(targets.length / 3));
+    const lastThird = targets.slice(-Math.floor(targets.length / 3));
+    const avg = (xs: { r: number }[]) => xs.reduce((s, x) => s + x.r, 0) / xs.length;
+    expect(avg(firstThird)).toBeLessThan(avg(lastThird));
   });
 
   it("목표와 오답이 같은 자리에 겹치지 않는다", () => {
     const points = placeSpawns(stageItems());
     const keys = points.map((p) => `${p.x.toFixed(3)},${p.z.toFixed(3)}`);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe("넓은 맵의 무리 구조", () => {
+  const stageItems = () => {
+    const targets = Array.from({ length: 15 }, (_, i) => ({
+      sizeM: 0.0425 * 1.11 ** i,
+      isTarget: true
+    }));
+    const decoys = Array.from({ length: 36 }, (_, i) => ({
+      sizeM: [0.02, 0.07, 0.2, 0.6][i % 4],
+      isTarget: false
+    }));
+    return [...targets, ...decoys];
+  };
+
+  it("무리 중심 개수가 정의대로다", () => {
+    expect(zoneCenters()).toHaveLength(ZONE_COUNT);
+  });
+
+  it("첫 무리는 시작 지점이다", () => {
+    const [first] = zoneCenters();
+    expect(dist(first)).toBe(0);
+  });
+
+  it("무리들이 서로 겹치지 않는다", () => {
+    // 겹치면 무리 구분이 없어지고 균일 분포와 같아진다
+    const centers = zoneCenters();
+    for (let i = 0; i < centers.length; i += 1) {
+      for (let j = i + 1; j < centers.length; j += 1) {
+        const d = Math.hypot(centers[i].x - centers[j].x, centers[i].z - centers[j].z);
+        expect(d).toBeGreaterThan(ZONE_RADIUS * 1.6);
+      }
+    }
+  });
+
+  it("모든 사물이 어느 무리 안에 들어 있다", () => {
+    // 무리 밖에 흩어진 사물이 있으면 그게 바로 「텅 빈 화면」이다
+    const items = stageItems();
+    const points = placeSpawns(items);
+    const centers = zoneCenters();
+    for (const p of points) {
+      const nearest = Math.min(
+        ...centers.map((c) => Math.hypot(p.x - c.x, p.z - c.z))
+      );
+      expect(nearest).toBeLessThanOrEqual(ZONE_RADIUS + 1e-9);
+    }
+  });
+
+  it("모든 무리에 사물이 있다", () => {
+    const items = stageItems();
+    const points = placeSpawns(items);
+    const centers = zoneCenters();
+    const counts = centers.map(
+      (c) => points.filter((p) => Math.hypot(p.x - c.x, p.z - c.z) <= ZONE_RADIUS + 1e-9).length
+    );
+    for (const n of counts) expect(n).toBeGreaterThan(0);
+  });
+
+  it("모든 무리에 오답이 섞여 있다", () => {
+    // 목표만 있는 무리가 있으면 학생이 품사를 안 보고 「저 무리로 가면 됨」으로 푼다
+    const items = stageItems();
+    const points = placeSpawns(items);
+    const centers = zoneCenters();
+    for (const c of centers) {
+      const inZone = items.filter(
+        (_, i) => Math.hypot(points[i].x - c.x, points[i].z - c.z) <= ZONE_RADIUS + 1e-9
+      );
+      expect(inZone.some((it) => !it.isTarget)).toBe(true);
+    }
+  });
+
+  it("맵이 예전보다 넓다", () => {
+    // 2m는 갇히는 느낌이 났다
+    expect(FIELD_RADIUS).toBeGreaterThan(4);
   });
 });

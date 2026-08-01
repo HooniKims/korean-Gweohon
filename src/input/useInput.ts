@@ -24,7 +24,11 @@ export const PITCH_MIN = 0.12;
 export const PITCH_MAX = 1.15;
 /** 확대/축소 배수 범위 */
 export const ZOOM_MIN = 0.6;
-export const ZOOM_MAX = 2.6;
+/**
+ * 축소 상한. 맵이 반경 7m로 넓어져서 다른 무리를 살펴볼 만큼 뒤로 빠질 수 있어야
+ * 한다. 목표를 찾으려면 「어디에 무리가 있는지」가 보여야 한다.
+ */
+export const ZOOM_MAX = 7.0;
 
 /** 스틱 UI가 그릴 정보. 판정은 useInput이 소유하고 UI는 이걸 구독만 한다. */
 export type StickVisual = {

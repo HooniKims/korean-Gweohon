@@ -13,6 +13,7 @@ import { DebugReadout } from "./DebugReadout";
 import { Field } from "./Field";
 import { Katamari } from "./Katamari";
 import { Roller } from "./Roller";
+import { Scatter } from "./Scatter";
 import { Stage } from "./Stage";
 
 /** 화각이 넓으면 가까운 사물이 화면을 덮고 원근이 과장된다. */
@@ -89,6 +90,7 @@ export function GameCanvas({
 
       <Suspense fallback={null}>
         <Stage />
+        <Scatter />
       </Suspense>
 
       {/* 공기 중에 떠다니는 반짝임. 정지 화면에도 미세한 움직임이 생긴다. */}

@@ -10,6 +10,7 @@ import { VirtualStick } from "@/input/VirtualStick";
 import { GameCanvas } from "@/three/GameCanvas";
 import { refreshLabelsWhenFontReady } from "@/three/labelTexture";
 import { preloadModels } from "@/three/modelRegistry";
+import { preloadScatter } from "@/three/Scatter";
 import { preloadStage } from "@/three/Stage";
 import { useGameStore } from "@/store/gameStore";
 import { CameraPad } from "./CameraPad";
@@ -46,6 +47,7 @@ export function GameShell() {
   useEffect(() => {
     preloadModels();
     preloadStage();
+    preloadScatter();
     refreshLabelsWhenFontReady();
   }, []);
 

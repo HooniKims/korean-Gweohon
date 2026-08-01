@@ -19,7 +19,9 @@ export const STAGES: StageDef[] = [
     // 오답 분포가 작은 쪽으로 치우쳐 있어(objectTiers) 개수를 늘려도 미로가 되지
     // 않는다. 밀도가 낮으면 화면이 비어 목표를 찾을 수 없다.
     decoyCount: 36,
-    durationSec: 90
+    // 맵이 반경 2m에서 7m로 넓어져 무리 사이 이동에 시간이 든다.
+    // 교실 검증에서 다시 조정한다.
+    durationSec: 120
   }
 ];
 

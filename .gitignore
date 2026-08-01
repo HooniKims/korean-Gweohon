@@ -9,3 +9,7 @@ tsconfig.tsbuildinfo
 # Tripo 원본 GLB (약 430MB). 디스크에 보관하고 git에는 넣지 않는다.
 # 압축본만 public/models/ 로 커밋한다.
 assets/tripo/raw/*.glb
+
+# Kenney 원본 zip과 추출본. 쓰는 것만 public/models/kenney/ 로 복사해 커밋한다.
+assets/kenney/zips/
+assets/kenney/extract/

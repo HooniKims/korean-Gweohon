@@ -29,19 +29,19 @@ type Prop = {
 
 /** 교실 무대. 작은 소품은 가까이, 큰 건물은 멀리 둔다. */
 const PROPS: Prop[] = [
-  { url: "/models/bg_blackboard.glb", size: 2.2, angle: 0, distance: 2.5 },
-  { url: "/models/bg_window.glb", size: 1.7, angle: 52, distance: 2.7 },
-  { url: "/models/bg_locker.glb", size: 1.9, angle: 104, distance: 2.6 },
-  { url: "/models/bg_bulletin_board.glb", size: 1.6, angle: 152, distance: 2.7 },
-  { url: "/models/bg_curtain.glb", size: 2.0, angle: 200, distance: 2.7 },
-  { url: "/models/bg_wall_clock.glb", size: 1.0, angle: 248, distance: 2.4 },
-  { url: "/models/bg_podium.glb", size: 1.1, angle: 296, distance: 2.0 },
-  { url: "/models/bg_desk.glb", size: 1.2, angle: 26, distance: 1.75 },
-  { url: "/models/bg_big_plant.glb", size: 1.4, angle: 78, distance: 1.8 },
-  { url: "/models/bg_sofa.glb", size: 1.5, angle: 130, distance: 1.85 },
-  { url: "/models/bg_house.glb", size: 4.0, angle: 176, distance: 4.6 },
-  { url: "/models/bg_fireplace.glb", size: 1.7, angle: 224, distance: 2.5 },
-  { url: "/models/bg_ritual.glb", size: 2.4, angle: 272, distance: 4.0 }
+  { url: "/models/bg_blackboard.glb", size: 4.62, angle: 0, distance: 1.05 },
+  { url: "/models/bg_window.glb", size: 3.57, angle: 52, distance: 1.13 },
+  { url: "/models/bg_locker.glb", size: 3.99, angle: 104, distance: 1.09 },
+  { url: "/models/bg_bulletin_board.glb", size: 3.36, angle: 152, distance: 1.13 },
+  { url: "/models/bg_curtain.glb", size: 4.2, angle: 200, distance: 1.13 },
+  { url: "/models/bg_wall_clock.glb", size: 2.1, angle: 248, distance: 1.01 },
+  { url: "/models/bg_podium.glb", size: 2.31, angle: 296, distance: 0.84 },
+  { url: "/models/bg_desk.glb", size: 2.52, angle: 26, distance: 0.73 },
+  { url: "/models/bg_big_plant.glb", size: 2.94, angle: 78, distance: 0.76 },
+  { url: "/models/bg_sofa.glb", size: 3.15, angle: 130, distance: 0.78 },
+  { url: "/models/bg_house.glb", size: 8.4, angle: 176, distance: 1.93 },
+  { url: "/models/bg_fireplace.glb", size: 3.57, angle: 224, distance: 1.05 },
+  { url: "/models/bg_ritual.glb", size: 5.04, angle: 272, distance: 1.68 }
 ];
 
 function StageProp({ prop }: { prop: Prop }) {

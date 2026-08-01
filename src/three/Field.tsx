@@ -9,7 +9,7 @@ import { CLASSROOM_GROUND, createGroundTexture } from "./groundTexture";
 import { WordObject } from "./WordObject";
 
 const WALL_HEIGHT = 2;
-const WALL_MARGIN = 0.8;
+const WALL_MARGIN = 1.6;
 /** 무대 밖 먼 바닥. 대비를 낮춰 시선이 무대에 남게 한다. */
 const FAR_GROUND = {
   light: CLASSROOM_GROUND.light,
@@ -23,7 +23,7 @@ const FAR_GROUND = {
  * 만들지 않아 벽이 없는 것과 같고, 공이 필드 밖으로 나가 끝없이 떨어진다.
  */
 function Walls() {
-  const segments = 20;
+  const segments = 40;
   const radius = FIELD_RADIUS + WALL_MARGIN;
   const halfWidth = (radius * Math.PI) / segments + 0.3;
   return (
@@ -56,8 +56,9 @@ export function Field() {
 
   // 무늬 간격은 공이 한 칸을 1초 남짓에 지나는 크기로 잡는다. 촘촘하면 어지럽고
   // 크면 안 움직여 보인다.
-  const ground = useMemo(() => createGroundTexture(14), []);
-  const groundFar = useMemo(() => createGroundTexture(90, FAR_GROUND), []);
+  // 넓어진 만큼 반복 수를 늘려 칸 크기를 유지한다. 칸이 커지면 안 움직여 보인다.
+  const ground = useMemo(() => createGroundTexture(44), []);
+  const groundFar = useMemo(() => createGroundTexture(220, FAR_GROUND), []);
 
   return (
     <>
