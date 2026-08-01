@@ -40,7 +40,7 @@ export function ChaseCamera({
   const { camera } = useThree();
   const desired = useRef(new Vector3());
   const target = useRef(new Vector3());
-  const pitch = useRef(0.55);
+  const pitch = useRef(0.38);
   const zoom = useRef(1);
   const lastManualYaw = useRef(0);
   const manualHold = useRef(0);
@@ -81,7 +81,7 @@ export function ChaseCamera({
     // 공 지름에 비례하되 상수항을 둔다. 상수항이 없으면 5cm 공에 카메라가 바짝
     // 붙어 필드가 비어 보이고, 상수항만 크면 공이 점이 된다.
     const d = useGameStore.getState().diameterM;
-    const range = (0.55 + d * 5) * zoom.current;
+    const range = (0.9 + d * 5.5) * zoom.current;
 
     const cosPitch = Math.cos(pitch.current);
     const sinPitch = Math.sin(pitch.current);

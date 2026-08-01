@@ -70,7 +70,7 @@ function fromUi(target: EventTarget | null): boolean {
 export function useInput(): InputHandles {
   const vector = useRef<InputVector>({ x: 0, y: 0 });
   const yawTarget = useRef<number>(0);
-  const pitchTarget = useRef<number>(0.55);
+  const pitchTarget = useRef<number>(0.38);
   const zoomTarget = useRef<number>(1);
   const pinchDist = useRef<number | null>(null);
   const pinchZoomStart = useRef<number>(1);
