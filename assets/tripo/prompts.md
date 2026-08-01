@@ -195,6 +195,17 @@ low-poly 3D model of a classroom door with a small window and a round handle, fl
 low-poly 3D model of a goofy monster made of tangled crumpled paper scrolls and ribbons knotted together, round bulky body, two tiny simple eyes, short stubby limbs, flat shaded, bright saturated pop colors, cel-shaded look, no outlines, playful cute proportions, single centered object, no text
 ```
 
+## 생성 기록 (2026-08-01)
+
+Tripo 크레딧 2170을 전량 소비해 **54개**를 생성했다. 생성된 목록은
+`generated.txt`에 있다.
+
+- AI 모델: **v3.0 (빠르고 균형 잡힌)** — 1개당 40 크레딧. v3.1 최고품질은 55라
+  회색 로우폴리 소품에는 과하다. v3.0으로 내려서 39개 → 54개로 늘렸다.
+- 미생성: `king_scepter` 1개 (크레딧 부족, 연출용 소품이라 영향 없음)
+- 다음 할 일: Tripo 에셋 패널에서 GLB를 내려받아 `raw/`에 넣고,
+  `npm run assets:optimize`로 `public/models/`에 압축본을 만든다.
+
 ## 우선순위
 
 크레딧이 부족해지면 이 순서로 자른다.
