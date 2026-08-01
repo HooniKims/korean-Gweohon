@@ -7,10 +7,18 @@ export type InputRef = { current: InputVector };
 export type NumberRef = { current: number };
 
 export const STICK_RADIUS_PX = 60;
+/**
+ * 오른쪽으로 끌었을 때 yaw가 움직이는 부호.
+ *
+ * yaw는 카메라가 공에서 떨어져 있는 방향각이라, 오른쪽으로 끌어 시점을 오른쪽으로
+ * 돌리려면 카메라가 반대쪽(-X)으로 가야 한다. 부호를 여기 한 곳에 두고 모든
+ * 입력이 같이 쓴다 — 마우스와 버튼이 서로 반대로 도는 사고를 막는다.
+ */
+export const YAW_SIGN = -1;
 /** 화면 가로 폭을 끝에서 끝까지 끌면 카메라가 이만큼 돈다(라디안). */
-const ROTATE_PER_SCREEN_WIDTH = Math.PI * 1.6;
+const ROTATE_PER_SCREEN_WIDTH = Math.PI * 3.0;
 /** 화면 세로 폭을 끝에서 끝까지 끌면 시선이 이만큼 오르내린다(라디안). */
-const PITCH_PER_SCREEN_HEIGHT = 1.4;
+const PITCH_PER_SCREEN_HEIGHT = 2.4;
 /** 시선 각도 범위. 너무 낮으면 지면에 파묻히고 너무 높으면 위에서 내려다보기만 한다. */
 export const PITCH_MIN = 0.12;
 export const PITCH_MAX = 1.15;
@@ -78,7 +86,8 @@ export function useInput(): InputHandles {
   const [stick, setStick] = useState<StickVisual>(null);
 
   useEffect(() => {
-    const yawPerPixel = () => ROTATE_PER_SCREEN_WIDTH / Math.max(1, window.innerWidth);
+    const yawPerPixel = () =>
+      (YAW_SIGN * ROTATE_PER_SCREEN_WIDTH) / Math.max(1, window.innerWidth);
     const pitchPerPixel = () => PITCH_PER_SCREEN_HEIGHT / Math.max(1, window.innerHeight);
     const touchDistance = (a: Touch, b: Touch) =>
       Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
@@ -233,4 +242,4 @@ export function useInput(): InputHandles {
 }
 
 /** Q·E 키로도 시점을 돌린다. 게임 루프에서 프레임마다 부른다. */
-export const KEY_ROTATE_SPEED = 2.2;
+export const KEY_ROTATE_SPEED = 3.4;

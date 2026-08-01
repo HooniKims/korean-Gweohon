@@ -8,7 +8,12 @@ import { canPickUp, speedMultiplier } from "@/game/growth";
 import { isTouching, placeSpawns } from "@/game/layout";
 import { rotateInput, torqueForInput } from "@/game/rolling";
 import { useGameStore } from "@/store/gameStore";
-import { KEY_ROTATE_SPEED, type InputRef, type NumberRef } from "@/input/useInput";
+import {
+  KEY_ROTATE_SPEED,
+  YAW_SIGN,
+  type InputRef,
+  type NumberRef
+} from "@/input/useInput";
 import { Vector3, type Group, type Mesh, type Object3D } from "three";
 
 /** 매 프레임 새 객체를 만들지 않도록 재사용한다. */
@@ -22,16 +27,16 @@ import { AttachedWord } from "./WordObject";
  * 토크 계수. 관성모멘트(I ∝ m·r²)에 비례해 토크를 주므로 공이 커져도
  * 각가속도가 일정하다. 체감 속도는 플레이테스트에서 이 값으로 조율한다.
  */
-const TORQUE_K = 85;
+const TORQUE_K = 55;
 /**
  * 최대 각속도. 공이 통제 불능으로 빨라지는 것을 막는다.
- * 선속도는 ω·r이므로 5cm 공은 약 0.8m/s, 20cm 공은 3.2m/s까지 난다.
+ * 선속도는 ω·r이므로 5cm 공은 약 0.65m/s, 20cm 공은 2.6m/s까지 난다.
  *
  * 선속도 상한으로 바꿔 초반을 빠르게 해봤지만 자동 플레이 성적이 12/15에서
  * 1/15로 떨어졌다. 감쇠를 낮춰 빠르게 만들면 공이 미끄러워 목표를 지나치고
  * 궤도를 돈다. 굴리는 재미는 속도보다 「멈출 수 있는가」에 달려 있다.
  */
-const MAX_ANGULAR_SPEED = 46;
+const MAX_ANGULAR_SPEED = 26;
 /** 이 높이보다 아래로 떨어지면 필드 밖으로 나간 것으로 본다. */
 const FALL_LIMIT_Y = -0.6;
 
@@ -176,7 +181,7 @@ export function Katamari({
 
     // Q·E 로도 시점을 돌린다
     if (keyRotate.current !== 0) {
-      yawTarget.current += keyRotate.current * KEY_ROTATE_SPEED * delta;
+      yawTarget.current += keyRotate.current * KEY_ROTATE_SPEED * delta * YAW_SIGN;
     }
 
     const raw = inputRef.current;

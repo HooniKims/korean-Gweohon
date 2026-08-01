@@ -4,16 +4,17 @@ import { useEffect, useRef } from "react";
 import {
   PITCH_MAX,
   PITCH_MIN,
+  YAW_SIGN,
   ZOOM_MAX,
   ZOOM_MIN,
   type NumberRef
 } from "@/input/useInput";
 
 /** 패드를 끝에서 끝까지 끌었을 때 도는 각(라디안) */
-const YAW_PER_PAD = Math.PI * 1.4;
-const PITCH_PER_PAD = 1.2;
+const YAW_PER_PAD = Math.PI * 3.2;
+const PITCH_PER_PAD = 2.4;
 /** 버튼 한 번에 도는 각 */
-const YAW_STEP = Math.PI / 6;
+const YAW_STEP = Math.PI / 4;
 const ZOOM_STEP = 1.25;
 
 const PAD_SIZE = 96;
@@ -78,7 +79,7 @@ export function CameraPad({
     const move = (x: number, y: number) => {
       if (!dragging.current) return;
       const rect = el.getBoundingClientRect();
-      yawTarget.current += ((x - last.current.x) / rect.width) * YAW_PER_PAD;
+      yawTarget.current += ((x - last.current.x) / rect.width) * YAW_PER_PAD * YAW_SIGN;
       pitchTarget.current = clamp(
         pitchTarget.current + ((y - last.current.y) / rect.height) * PITCH_PER_PAD,
         PITCH_MIN,
@@ -120,8 +121,9 @@ export function CameraPad({
     };
   }, [yawTarget, pitchTarget, zoomTarget]);
 
+  // dir: -1 왼쪽, +1 오른쪽. 드래그와 같은 부호를 써야 서로 반대로 돌지 않는다.
   const rotate = (dir: number) => () => {
-    yawTarget.current += YAW_STEP * dir;
+    yawTarget.current += YAW_STEP * dir * YAW_SIGN;
   };
   const zoom = (factor: number) => () => {
     zoomTarget.current = clamp(zoomTarget.current * factor, ZOOM_MIN, ZOOM_MAX);
