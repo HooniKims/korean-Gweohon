@@ -24,25 +24,30 @@ type ScatterSpec = {
   url: string;
   /** 몇 개 뿌릴지 */
   count: number;
-  /** 화면에서의 크기(미터) */
+  /**
+   * 화면에서의 크기(미터).
+   *
+   * 공이 5cm에서 시작하므로 나무가 1.5m면 공의 30배다. 그러면 공과 캐릭터가
+   * 화면에서 점이 된다. 괴혼 초반이 책상 위인 것처럼, 장식도 손바닥 규모로 둔다.
+   */
   size: number;
   /** 크기 흔들림. 0.3이면 ±30% */
   sizeJitter: number;
 };
 
 const SPECS: ScatterSpec[] = [
-  { url: "/models/kenney/n_tree_default.glb", count: 14, size: 1.5, sizeJitter: 0.3 },
-  { url: "/models/kenney/n_tree_oak.glb", count: 10, size: 1.7, sizeJitter: 0.25 },
-  { url: "/models/kenney/n_tree_pineRoundC.glb", count: 12, size: 1.6, sizeJitter: 0.3 },
-  { url: "/models/kenney/n_tree_thin.glb", count: 8, size: 1.4, sizeJitter: 0.3 },
-  { url: "/models/kenney/n_rock_largeA.glb", count: 8, size: 0.7, sizeJitter: 0.35 },
-  { url: "/models/kenney/n_rock_tallD.glb", count: 7, size: 0.85, sizeJitter: 0.3 },
-  { url: "/models/kenney/n_plant_bushLarge.glb", count: 16, size: 0.5, sizeJitter: 0.35 },
-  { url: "/models/kenney/n_grass_large.glb", count: 22, size: 0.36, sizeJitter: 0.4 },
-  { url: "/models/kenney/n_mushroom_redGroup.glb", count: 9, size: 0.3, sizeJitter: 0.3 },
-  { url: "/models/kenney/n_flower_purpleB.glb", count: 12, size: 0.28, sizeJitter: 0.3 },
-  { url: "/models/kenney/n_flower_yellowA.glb", count: 12, size: 0.28, sizeJitter: 0.3 },
-  { url: "/models/kenney/n_stump_round.glb", count: 6, size: 0.45, sizeJitter: 0.3 }
+  { url: "/models/kenney/n_tree_default.glb", count: 14, size: 0.63, sizeJitter: 0.3 },
+  { url: "/models/kenney/n_tree_oak.glb", count: 10, size: 0.714, sizeJitter: 0.25 },
+  { url: "/models/kenney/n_tree_pineRoundC.glb", count: 12, size: 0.672, sizeJitter: 0.3 },
+  { url: "/models/kenney/n_tree_thin.glb", count: 8, size: 0.588, sizeJitter: 0.3 },
+  { url: "/models/kenney/n_rock_largeA.glb", count: 8, size: 0.294, sizeJitter: 0.35 },
+  { url: "/models/kenney/n_rock_tallD.glb", count: 7, size: 0.357, sizeJitter: 0.3 },
+  { url: "/models/kenney/n_plant_bushLarge.glb", count: 16, size: 0.21, sizeJitter: 0.35 },
+  { url: "/models/kenney/n_grass_large.glb", count: 22, size: 0.151, sizeJitter: 0.4 },
+  { url: "/models/kenney/n_mushroom_redGroup.glb", count: 9, size: 0.126, sizeJitter: 0.3 },
+  { url: "/models/kenney/n_flower_purpleB.glb", count: 12, size: 0.118, sizeJitter: 0.3 },
+  { url: "/models/kenney/n_flower_yellowA.glb", count: 12, size: 0.118, sizeJitter: 0.3 },
+  { url: "/models/kenney/n_stump_round.glb", count: 6, size: 0.189, sizeJitter: 0.3 }
 ];
 
 /** 무리와 겹치지 않는 자리를 찾는다. 장식이 사물을 가리면 목표를 못 본다. */

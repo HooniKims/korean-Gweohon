@@ -81,7 +81,10 @@ export function ChaseCamera({
     // 공 지름에 비례하되 상수항을 둔다. 상수항이 없으면 5cm 공에 카메라가 바짝
     // 붙어 필드가 비어 보이고, 상수항만 크면 공이 점이 된다.
     const d = useGameStore.getState().diameterM;
-    const range = (0.9 + d * 5.5) * zoom.current;
+    // 상수항이 크면 작은 공이 화면에서 점이 된다. 맵을 넓혔다고 카메라를 뒤로
+    // 빼면 공과 캐릭터가 같이 작아진다 — 맵은 축소 버튼으로 살펴보게 하고
+    // 기본 시점은 공에 붙인다.
+    const range = (0.42 + d * 4.5) * zoom.current;
 
     const cosPitch = Math.cos(pitch.current);
     const sinPitch = Math.sin(pitch.current);

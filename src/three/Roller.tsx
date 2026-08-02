@@ -10,9 +10,16 @@ import { measureModel } from "./measureModel";
 import { ROLLER_MODEL } from "./modelRegistry";
 
 /** 캐릭터 키를 공 지름의 몇 배로 둘지. 괴혼의 왕자도 공보다 조금 크게 시작한다. */
-const HEIGHT_RATIO = 1.3;
+const HEIGHT_RATIO = 1.55;
+/**
+ * 공 중심선에서 옆으로 비키는 각(라디안).
+ *
+ * 정확히 뒤에 세우면 카메라와 공 사이를 막아 공이 안 보인다. 살짝 옆으로 비키면
+ * 미는 자세는 유지되면서 공이 드러난다.
+ */
+const SIDE_OFFSET = 0.62;
 /** 캐릭터가 아무리 작아지거나 커져도 이 범위를 벗어나지 않는다(미터). */
-const MIN_HEIGHT = 0.06;
+const MIN_HEIGHT = 0.11;
 const MAX_HEIGHT = 0.5;
 /** 모델을 미리 이 키로 정규화해 둔다(미터). 그룹 스케일은 이 값 기준 배수다. */
 const BASE_HEIGHT = 0.08;
@@ -65,11 +72,11 @@ export function Roller() {
     const d = useGameStore.getState().diameterM;
     const radius = d / 2;
 
-    // 지름에 비례하되 세제곱근으로 완만하게. 공이 8배 커져도 캐릭터는 2배만 커진다.
-    const height = Math.min(
-      MAX_HEIGHT,
-      Math.max(MIN_HEIGHT, d * HEIGHT_RATIO * Math.cbrt(0.05 / Math.max(d, 0.001)))
-    );
+    // 지름에 비례하되 네제곱근으로 완만하게. 공이 커질수록 캐릭터 비중이 줄어
+    // 나중에 화면을 가리지 않는다. 세제곱근은 너무 빨리 줄어 작은 공에서
+    // 캐릭터가 눈에 안 잡혔다.
+    const shrink = (0.05 / Math.max(d, 0.001)) ** 0.25;
+    const height = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, d * HEIGHT_RATIO * shrink));
     const scale = height / baseSize;
     g.scale.setScalar(scale);
     rollerDebug.height = height;
@@ -90,13 +97,16 @@ export function Roller() {
     );
     shown.current += diff * (1 - Math.exp(-12 * delta));
 
-    const back = radius + height * 0.3;
+    // 뒤로 물리되 옆으로도 비킨다. 공을 가리지 않으면서 미는 그림이 된다.
+    const back = radius + height * 0.45;
+    const side = shown.current + SIDE_OFFSET;
     g.position.set(
-      ballPosition.x - Math.sin(shown.current) * back,
+      ballPosition.x - Math.sin(side) * back,
       0,
-      ballPosition.z - Math.cos(shown.current) * back
+      ballPosition.z - Math.cos(side) * back
     );
     // 공을 바라본다
+    // 몸은 옆에 있어도 얼굴은 진행 방향을 본다
     g.rotation.y = shown.current + MODEL_FACING_OFFSET;
     rollerDebug.x = g.position.x;
     rollerDebug.y = g.position.y;
