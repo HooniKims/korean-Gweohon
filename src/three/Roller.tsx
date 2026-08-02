@@ -12,14 +12,26 @@ import { ROLLER_MODEL } from "./modelRegistry";
 /** 캐릭터 키를 공 지름의 몇 배로 둘지. 괴혼의 왕자도 공보다 조금 크게 시작한다. */
 const HEIGHT_RATIO = 1.55;
 /**
- * 공 중심선에서 옆으로 비키는 각(라디안).
+ * 공 중심선에서 옆으로 비키는 거리. (공 반지름 + 캐릭터 반두께)의 배수다.
  *
- * 정확히 뒤에 세우면 카메라와 공 사이를 막아 공이 안 보인다. 살짝 옆으로 비키면
- * 미는 자세는 유지되면서 공이 드러난다.
+ * 정확히 뒤에 세우면 카메라와 공 사이를 막아 공이 안 보인다. 카메라를 올려
+ * 머리 위로 넘겨다보려면 60도 이상 내려봐야 해서 그 방법은 쓸 수 없다.
+ *
+ * 그래서 옆으로 비키되, 캐릭터가 공보다 클 때만 많이 비킨다(MAX). 공이 자라
+ * 키에 가까워지면 정면 뒤로 돌아온다(MIN).
  */
-const SIDE_OFFSET = 0.62;
+const SIDE_SHIFT_MAX = 1.05;
+const SIDE_SHIFT_MIN = 0.18;
+/**
+ * 캐릭터의 앞뒤 두께를 키의 몇 배로 볼지.
+ *
+ * 이 모델은 왕관과 망토 때문에 키가 폭보다 크다. 각도로 비키게 하면 공이
+ * 커질수록 뒤로 물러나는 거리가 같이 커져서, 20cm 공에서는 12cm 떨어진 채
+ * 나란히 걷는 그림이 됐다. 두께를 기준으로 잡아야 어느 크기에서도 공에 닿는다.
+ */
+const HALF_DEPTH_RATIO = 0.3;
 /** 캐릭터가 아무리 작아지거나 커져도 이 범위를 벗어나지 않는다(미터). */
-const MIN_HEIGHT = 0.11;
+const MIN_HEIGHT = 0.086;
 const MAX_HEIGHT = 0.5;
 /** 모델을 미리 이 키로 정규화해 둔다(미터). 그룹 스케일은 이 값 기준 배수다. */
 const BASE_HEIGHT = 0.08;
@@ -35,6 +47,16 @@ const PUSH_LEAN = 0.32;
 /** 걷는 흔들림 */
 const BOB_SPEED = 14;
 const BOB_AMOUNT = 0.09;
+
+/**
+ * 캐릭터가 공보다 얼마나 큰지를 0..1로 낸다. 1이면 공을 압도하는 크기,
+ * 0이면 공이 캐릭터만큼 자란 상태다. 뒤로 물러나는 거리와 옆으로 비키는
+ * 거리를 함께 이 값으로 정해, 공이 자랄수록 캐릭터가 정면 뒤로 돌아온다.
+ */
+function towerT(height: number, diameterM: number): number {
+  const tower = height / Math.max(diameterM, 0.001);
+  return Math.min(1, Math.max(0, (tower - 1) / 1.2));
+}
 
 /**
  * 공을 미는 캐릭터.
@@ -97,17 +119,34 @@ export function Roller() {
     );
     shown.current += diff * (1 - Math.exp(-12 * delta));
 
-    // 뒤로 물리되 옆으로도 비킨다. 공을 가리지 않으면서 미는 그림이 된다.
-    const back = radius + height * 0.45;
-    const side = shown.current + SIDE_OFFSET;
-    g.position.set(
-      ballPosition.x - Math.sin(side) * back,
-      0,
-      ballPosition.z - Math.cos(side) * back
-    );
-    // 공을 바라본다
-    // 몸은 옆에 있어도 얼굴은 진행 방향을 본다
-    g.rotation.y = shown.current + MODEL_FACING_OFFSET;
+    /*
+      뒤로 물리되 옆으로도 비킨다. 공을 가리지 않으면서 미는 그림이 된다.
+
+      뒤로 물러나는 거리는 몸이 공에 닿을 만큼만. 여기에 캐릭터가 공보다 클
+      때만 여유를 더한다 — 작은 공에 바짝 붙으면 캐릭터가 공을 덮어버린다.
+    */
+    const halfDepth = height * HALF_DEPTH_RATIO;
+    const back = radius + halfDepth * 0.85 + height * 0.9 * towerT(height, d);
+
+    // 옆으로 비키는 거리. 각도로 주면 공이 커질수록 실제 거리가 같이 벌어져
+    // 20cm 공에서 12cm 떨어진 채 나란히 걷는 그림이 됐다.
+    const t = towerT(height, d);
+    const shift = (radius + halfDepth) * (SIDE_SHIFT_MIN + (SIDE_SHIFT_MAX - SIDE_SHIFT_MIN) * t);
+
+    const fwdX = Math.sin(shown.current);
+    const fwdZ = Math.cos(shown.current);
+    const px = ballPosition.x - fwdX * back - fwdZ * shift;
+    const pz = ballPosition.z - fwdZ * back + fwdX * shift;
+    g.position.set(px, 0, pz);
+
+    /*
+      공을 바라본다.
+
+      진행 방향을 보게 두면 옆으로 비킨 만큼 공에서 고개를 돌린 채 나란히 걷는
+      그림이 된다. 「공이 캐릭터 옆구리에 붙어 다닌다」는 게 이 때문이었다.
+    */
+    g.rotation.y =
+      Math.atan2(ballPosition.x - px, ballPosition.z - pz) + MODEL_FACING_OFFSET;
     rollerDebug.x = g.position.x;
     rollerDebug.y = g.position.y;
     rollerDebug.z = g.position.z;
