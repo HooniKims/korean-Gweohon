@@ -6,6 +6,17 @@
  */
 export const ballPosition = { x: 0, y: 0, z: 0 };
 
+/**
+ * 공의 회전. 붙은 사물이 함께 구르도록 AttachedWords가 읽는다.
+ *
+ * 부착물을 물리 바디의 자식으로 두면 모델 로딩이 서스펜드할 때 Physics까지
+ * 언마운트된다. 밖에 두고 이 값으로 따라가게 한다.
+ */
+export const ballSpin = { x: 0, y: 0, z: 0, w: 1 };
+
+/** 낙하 복구가 몇 번 걸렸는지. 계속 늘면 공이 바닥 아래에 갇힌 것이다. */
+export const fallDebug = { resets: 0 };
+
 /** 조작 감각을 수치로 확인하기 위한 계측값. 플레이테스트에서 파라미터를 조율할 때 쓴다. */
 export const ballMotion = {
   /** 수평 속도 (m/s) */
@@ -20,7 +31,9 @@ export const ballMotion = {
   hitches: 0,
   /** 수평 진행 방향(정규화 전). 캐릭터가 뒤에 서는 데 쓴다. */
   dirX: 0,
-  dirZ: 0
+  dirZ: 0,
+  /** 붙일 수 있는 목표에 다가가는 중인가. 카메라가 조준을 방해하지 않게 쓴다. */
+  aiming: false
 };
 
 /**

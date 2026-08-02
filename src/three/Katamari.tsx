@@ -5,7 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import { BallCollider, RigidBody, type RapierRigidBody } from "@react-three/rapier";
 import { useEffect, useMemo, useRef } from "react";
 import { canPickUp, speedMultiplier } from "@/game/growth";
-import { isTouching, placeSpawns } from "@/game/layout";
+import { isTouchingPath, placeSpawns } from "@/game/layout";
 import { rotateInput, torqueForInput } from "@/game/rolling";
 import { createStuckState, updateStuck } from "@/game/stuck";
 import { useGameStore } from "@/store/gameStore";
@@ -19,10 +19,17 @@ import { Vector3, type Group, type Mesh, type Object3D } from "three";
 
 /** 매 프레임 새 객체를 만들지 않도록 재사용한다. */
 const worldPos = new Vector3();
-import { ballMotion, ballPosition, cameraState, coreDebug } from "./ballTracker";
+import {
+  ballMotion,
+  ballPosition,
+  ballSpin,
+  cameraState,
+  coreDebug,
+  fallDebug
+} from "./ballTracker";
 import { measureModel } from "./measureModel";
+import { livePosition } from "./spawnPositions";
 import { CORE_MODEL } from "./modelRegistry";
-import { AttachedWord } from "./WordObject";
 
 /**
  * 토크 계수. 관성모멘트(I ∝ m·r²)에 비례해 토크를 주므로 공이 커져도
@@ -40,6 +47,11 @@ const TORQUE_K = 55;
 const MAX_ANGULAR_SPEED = 26;
 /** 이 높이보다 아래로 떨어지면 필드 밖으로 나간 것으로 본다. */
 const FALL_LIMIT_Y = -0.6;
+/**
+ * 이 거리 안에 붙일 수 있는 목표가 있으면 조준 중으로 본다.
+ * 카메라가 회전을 멈춰 화면이 고정되고, 마지막 한 뼘을 좁힐 수 있다.
+ */
+const AIM_RANGE_M = 0.75;
 /** 안내 문구를 띄워 두는 시간(초) */
 const NOTICE_SEC = 1.8;
 /** 끼였을 때 뒤로 밀어주는 세기 (질량 대비) */
@@ -70,7 +82,7 @@ function KatamariCore({ radius }: { radius: number }) {
 
   return (
     <group scale={scale}>
-      <primitive object={object} />
+      <primitive object={object} dispose={null} />
     </group>
   );
 }
@@ -84,6 +96,8 @@ export function Katamari({
 }) {
   const body = useRef<RapierRigidBody>(null);
   const visual = useRef<Group>(null);
+  // 프레임 사이 이동을 선분으로 보기 위한 직전 위치
+  const prevBall = useRef({ x: 0, z: 0 });
   const noticeHold = useRef(0);
   const stuck = useRef(createStuckState());
   const frameWindow = useRef(0);
@@ -91,8 +105,6 @@ export function Katamari({
   const frameHitches = useRef(0);
 
   const spawns = useGameStore((st) => st.spawns);
-  const attachedIds = useGameStore((st) => st.attachedIds);
-  const attachDirs = useGameStore((st) => st.attachDirs);
   const diameterM = useGameStore((st) => st.diameterM);
   const radius = diameterM / 2;
 
@@ -137,6 +149,12 @@ export function Katamari({
       ballPosition.z = t.z;
     }
 
+    const rot = rb.rotation();
+    ballSpin.x = rot.x;
+    ballSpin.y = rot.y;
+    ballSpin.z = rot.z;
+    ballSpin.w = rot.w;
+
     const lv = rb.linvel();
     const av = rb.angvel();
     ballMotion.speed = Math.hypot(lv.x, lv.z);
@@ -162,6 +180,7 @@ export function Katamari({
 
     // 어떤 이유로든 필드 밖으로 떨어지면 되돌린다. 끝없이 떨어지면 판이 죽는다.
     if (t.y < FALL_LIMIT_Y) {
+      fallDebug.resets += 1;
       rb.setTranslation({ x: 0, y: 0.4, z: 0 }, true);
       rb.setLinvel({ x: 0, y: 0, z: 0 }, true);
       rb.setAngvel({ x: 0, y: 0, z: 0 }, true);
@@ -177,13 +196,23 @@ export function Katamari({
     // 부착 판정. 충돌 이벤트를 쓰면 빠를 때 작은 사물을 통과해 버린다.
     const ball = { x: t.x, z: t.z, diameterM: s.diameterM };
     let bumpedTooBig: string | null = null;
+    // 붙일 수 있는 목표 중 가장 가까운 거리. 카메라 조준 고정에 쓴다.
+    let nearestPickable = Infinity;
     for (let i = 0; i < s.spawns.length; i += 1) {
       if (s.attachedIds.includes(i)) continue;
       const spawn = s.spawns[i];
-      const point = points[i];
-      if (!spawn || !point) continue;
+      const spawned = points[i];
+      if (!spawn || !spawned) continue;
+      // 밀려 움직였을 수 있으므로 실제 위치로 판정한다
+      const point = livePosition(i, spawned);
       const objectDiameterM = spawn.sizeM;
-      if (!isTouching(ball, point, objectDiameterM)) continue;
+      if (canPickUp(s.diameterM, objectDiameterM)) {
+        const gap = Math.hypot(ball.x - point.x, ball.z - point.z);
+        if (gap < nearestPickable) nearestPickable = gap;
+      }
+
+      if (!isTouchingPath(prevBall.current, ball, s.diameterM, point, objectDiameterM))
+        continue;
 
       if (!canPickUp(s.diameterM, objectDiameterM)) {
         // 튕겨나가는 이유를 알려준다. 신호가 없으면 학생은 버그로 여긴다.
@@ -194,6 +223,11 @@ export function Katamari({
       bumpedTooBig = null;
       break; // 한 프레임에 하나만 붙인다
     }
+
+    ballMotion.aiming = nearestPickable < AIM_RANGE_M;
+    // 다음 프레임의 경로 판정 시작점
+    prevBall.current.x = ball.x;
+    prevBall.current.z = ball.z;
 
     if (bumpedTooBig) {
       s.setNotice(`「${bumpedTooBig}」는 아직 너무 커요 — 더 키워서 오세요`);
@@ -263,14 +297,6 @@ export function Katamari({
       <group ref={visual}>
         <KatamariCore radius={radius} />
       </group>
-      {attachedIds.map((id) => {
-        const spawn = spawns[id];
-        const dir = attachDirs[id];
-        if (!spawn || !dir) return null;
-        return (
-          <AttachedWord key={id} index={id} spawn={spawn} dir={dir} ballRadius={radius} />
-        );
-      })}
     </RigidBody>
   );
 }

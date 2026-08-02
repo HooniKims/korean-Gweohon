@@ -4,20 +4,12 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useRef } from "react";
 import { Vector3 } from "three";
 import type { NumberRef } from "@/input/useInput";
+import { followYawStep } from "@/game/cameraFollow";
 import { useGameStore } from "@/store/gameStore";
 import { ballMotion, ballPosition, cameraState } from "./ballTracker";
 
 /** 시선이 공보다 살짝 위를 향하게 해서 앞쪽 지면이 더 보이게 한다. */
 const LOOK_AHEAD_UP = 0.35;
-/** 이 속도를 넘겨야 카메라가 진행 방향을 따라 돈다. 멈춰 있을 때 흔들리지 않게. */
-const AUTO_FOLLOW_MIN_SPEED = 0.12;
-/**
- * 자동 추종 속도. 크면 확 돌아 멀미가 나고, 작으면 공이 옆으로 빠진다.
- *
- * 입력도 카메라 기준이라 방향키를 계속 누르면 공이 원을 그린다. 3인칭 추적
- * 카메라의 정상 동작이지만, 값이 크면 회전 반경이 좁아 통제하기 어렵다.
- */
-const AUTO_FOLLOW_RATE = 1.1;
 /** 손으로 시점을 만진 뒤 이 시간 동안은 자동 추종을 쉰다(초). */
 const MANUAL_HOLD_SEC = 1.6;
 
@@ -46,8 +38,8 @@ export function ChaseCamera({
   const manualHold = useRef(0);
 
   useFrame((_, delta) => {
-    // 굴러가는 방향으로 카메라를 돌린다. 괴혼처럼 공 뒤를 자동으로 따라가야
-    // 좌우로 굴려도 공이 화면 밖으로 빠지지 않는다.
+    // 굴러가는 방향으로 카메라를 돌린다. 크게 어긋났을 때만 되돌리므로
+    // 조준 중에는 화면이 가만히 있다(game/cameraFollow).
     //
     // 손으로 시점을 만지면 잠시 멈춘다. 안 그러면 학생이 옆을 보려고 돌려놔도
     // 카메라가 곧바로 제자리로 끌려가 조작이 싸운다.
@@ -58,15 +50,19 @@ export function ChaseCamera({
       manualHold.current -= delta;
     }
 
-    if (manualHold.current <= 0 && ballMotion.speed > AUTO_FOLLOW_MIN_SPEED) {
-      // 진행 방향의 반대편이 카메라 자리다
-      const desiredYaw = Math.atan2(-ballMotion.dirX, -ballMotion.dirZ);
-      const diff = Math.atan2(
-        Math.sin(desiredYaw - yawTarget.current),
-        Math.cos(desiredYaw - yawTarget.current)
+    if (manualHold.current <= 0) {
+      const step = followYawStep(
+        yawTarget.current,
+        ballMotion.dirX,
+        ballMotion.dirZ,
+        ballMotion.speed,
+        delta,
+        ballMotion.aiming
       );
-      yawTarget.current += diff * (1 - Math.exp(-AUTO_FOLLOW_RATE * delta));
-      lastManualYaw.current = yawTarget.current;
+      if (step !== 0) {
+        yawTarget.current += step;
+        lastManualYaw.current = yawTarget.current;
+      }
     }
 
     // 조작을 감쇠해서 따라가되 지연이 느껴지지 않을 만큼 빠르게 한다.

@@ -1,5 +1,14 @@
 import { Box3, Mesh, Vector3, type Object3D } from "three";
 
+/**
+ * 복제한 GLTF를 <primitive>로 렌더할 때는 반드시 dispose={null}을 준다.
+ *
+ * scene.clone()은 지오메트리를 원본과 공유한다. R3F는 언마운트할 때 붙어 있던
+ * 객체를 정리하는데, 그러면 캐시된 GLTF와 다른 복제본들이 쓰는 GPU 버퍼까지
+ * 해제된다. 사물을 붙이는 순간(필드 사물 언마운트 + 부착물 마운트) 렌더러가
+ * 통째로 멈추는 원인이 이것이었다.
+ */
+
 export type ModelBounds = {
   /** 가장 긴 변의 길이. 0보다 크다. */
   longest: number;

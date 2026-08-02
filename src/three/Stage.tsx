@@ -71,7 +71,7 @@ function StageProp({ prop }: { prop: Prop }) {
       rotation={[0, -rad + Math.PI / 2, 0]}
       scale={scale}
     >
-      <primitive object={object} />
+      <primitive object={object} dispose={null} />
     </group>
   );
 }

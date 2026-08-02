@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { placeSpawns } from "@/game/layout";
 import { STAGES } from "@/game/stages";
-import { ballPosition } from "@/three/ballTracker";
+import { rotateInput } from "@/game/rolling";
+import { ballPosition, cameraState } from "@/three/ballTracker";
+import { clearLivePositions, livePosition } from "@/three/spawnPositions";
 import { parseWordBank, planSpawns, type WordBank } from "@/game/words";
 import { useInput } from "@/input/useInput";
 import { VirtualStick } from "@/input/VirtualStick";
@@ -80,6 +82,7 @@ export function GameShell() {
         decoyCount: stage.decoyCount,
         rng: Math.random
       });
+      clearLivePositions();
       startStage(stage, spawns);
     },
     [startStage]
@@ -95,7 +98,10 @@ export function GameShell() {
     (window as unknown as Record<string, unknown>).__gweohon = {
       store: useGameStore,
       placeSpawns,
-      ballPosition
+      ballPosition,
+      cameraState,
+      rotateInput,
+      livePosition
     };
   }, [showDebug]);
 

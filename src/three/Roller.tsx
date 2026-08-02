@@ -132,7 +132,7 @@ export function Roller() {
   return (
     <group ref={group} scale={initialScale}>
       <group ref={inner}>
-        <primitive object={object} />
+        <primitive object={object} dispose={null} />
       </group>
     </group>
   );

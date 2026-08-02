@@ -8,6 +8,7 @@ import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
 import { Suspense } from "react";
 import { FIELD_RADIUS } from "@/game/layout";
 import type { InputRef, NumberRef } from "@/input/useInput";
+import { AttachedWords } from "./AttachedWords";
 import { ChaseCamera } from "./ChaseCamera";
 import { DebugReadout } from "./DebugReadout";
 import { Field } from "./Field";
@@ -114,6 +115,7 @@ export function GameCanvas({
           <Field />
           <Katamari inputRef={inputRef} yawTarget={yawTarget} />
         </Physics>
+        <AttachedWords />
         <Roller />
       </Suspense>
 

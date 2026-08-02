@@ -1,19 +1,21 @@
 "use client";
 
 import { Billboard, useGLTF } from "@react-three/drei";
-import { RigidBody } from "@react-three/rapier";
-import { useMemo } from "react";
+import { useFrame } from "@react-three/fiber";
+import { RigidBody, type RapierRigidBody } from "@react-three/rapier";
+import { useMemo, useRef } from "react";
 import { Mesh, MeshStandardMaterial, Quaternion, Vector3, type Object3D } from "three";
 import { POS_COLORS } from "@/game/pos";
 import type { SpawnPlan } from "@/game/words";
 import { getLabelTexture } from "./labelTexture";
 import { measureModel } from "./measureModel";
 import { modelForIndex } from "./modelRegistry";
+import { setLivePosition } from "./spawnPositions";
 
 /** 사물 모델의 기본 위쪽. Body가 원점을 바닥 중앙으로 맞추므로 +Y가 위다. */
 const UP = new Vector3(0, 1, 0);
 
-/** 사물 밀도. 물의 1/40 정도로 가볍게 둬서 작은 공도 밀어낼 수 있다. */
+/** 못 먹는 사물의 밀도. 물의 1/40 정도로 가볍게 둬서 작은 공도 밀어낼 수 있다. */
 const PUSHABLE_DENSITY = 25;
 
 /** 상급 난이도에서 색을 끄면 이 회색으로 통일한다. */
@@ -66,7 +68,7 @@ function Body({
 
   return (
     <group scale={scale}>
-      <primitive object={object} />
+      <primitive object={object} dispose={null} />
     </group>
   );
 }
@@ -133,14 +135,40 @@ export function WordObject({
   const size = spawn.sizeM;
   const color = greyscale ? GREY : POS_COLORS[spawn.entry.pos];
   const url = modelForIndex(spawn.tier, index);
+  const body = useRef<RapierRigidBody>(null);
+
+  // 밀려 움직인 실제 위치를 보고한다. 최초 좌표로 판정하면 밀린 뒤로는
+  // 화면에서 사물을 밀고 있는데도 붙지 않는다.
+  useFrame(() => {
+    const rb = body.current;
+    if (!rb) return;
+    const t = rb.translation();
+    setLivePosition(index, t.x, t.z);
+  });
+
+  const visual = (
+    <>
+      <Body size={size} color={color} url={url} dim={!pickable} />
+      <LabelTag text={spawn.entry.text} color={color} size={size} dim={!pickable} />
+    </>
+  );
+
+  /*
+    먹을 수 있는 것은 물리를 두지 않는다.
+
+    콜라이더가 있으면 공이 다가갈 때 사물이 밀려나며 일정 간격을 유지해 영원히
+    안 붙는다. 실측에서 여유가 정확히 1.5cm에 고정된 채 왕복했다. 부착 판정은
+    Katamari가 경로로 하므로 물리가 필요 없다.
+
+    못 먹는 것만 밀리는 물체로 둔다. 밀어서 치우거나 돌아가야 하는 장애물이 된다.
+  */
+  if (pickable) {
+    return <group position={position}>{visual}</group>;
+  }
 
   return (
-    /*
-      밀도를 낮춰 공이 밀어낼 수 있게 한다. 기본 밀도면 20cm 사물이 5cm 공보다
-      64배 무거워서 벽이 되고, 좁은 필드에서 공이 끼여 판이 죽는다.
-      큰 것을 밀 때 무겁게 느껴지는 것은 유지하되 못 밀 정도는 아니게 둔다.
-    */
     <RigidBody
+      ref={body}
       colliders="cuboid"
       position={position}
       friction={0.55}
@@ -151,8 +179,7 @@ export function WordObject({
       <mesh visible={false}>
         <boxGeometry args={[size, size, size]} />
       </mesh>
-      <Body size={size} color={color} url={url} dim={!pickable} />
-      <LabelTag text={spawn.entry.text} color={color} size={size} dim={!pickable} />
+      {visual}
     </RigidBody>
   );
 }

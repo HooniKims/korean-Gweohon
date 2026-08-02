@@ -13,8 +13,13 @@ export const FIELD_RADIUS = 7.0;
 export const START_CLEARANCE = 0.22;
 /** 무리 하나의 반경. 이 안에 사물이 몰려 있다. */
 export const ZONE_RADIUS = 1.15;
-/** 무리 개수. 첫 무리는 시작 지점이고 나머지는 바깥으로 퍼진다. */
-export const ZONE_COUNT = 7;
+/**
+ * 무리 개수. 첫 무리는 시작 지점이고 나머지는 바깥으로 퍼진다.
+ *
+ * 많으면 방문할 곳이 늘어 이동에만 시간을 다 쓴다. 실측에서 7개일 때 120초에
+ * 4개밖에 못 모았다. 5개로 줄여 무리당 목표를 3개로 늘렸다.
+ */
+export const ZONE_COUNT = 5;
 
 export type SpawnPoint = { x: number; z: number };
 
@@ -30,8 +35,9 @@ export function zoneCenters(): SpawnPoint[] {
   const centers: SpawnPoint[] = [{ x: 0, z: 0 }];
   const outer = ZONE_COUNT - 1;
   for (let i = 0; i < outer; i += 1) {
-    // 안쪽 고리와 바깥 고리를 번갈아 둬서 이동 거리가 들쭉날쭉해진다
-    const ring = i % 2 === 0 ? 0.55 : 0.88;
+    // 넓은 화면은 배경이 만들고 플레이는 안쪽에서 한다. 무리를 필드 끝까지
+    // 벌리면 이동에만 시간을 다 쓴다 — 0.55/0.88일 때 무리 간 4~8m였다.
+    const ring = i % 2 === 0 ? 0.3 : 0.46;
     const angle = (i / outer) * Math.PI * 2 + GOLDEN;
     const r = FIELD_RADIUS * ring;
     centers.push({ x: Math.cos(angle) * r, z: Math.sin(angle) * r });
@@ -120,18 +126,56 @@ export function placeSpawns(items: readonly Placeable[]): SpawnPoint[] {
   return out;
 }
 
+/** 공이 사물을 붙일 수 있는 거리 */
+export function grabReach(ballDiameterM: number, objectDiameterM: number): number {
+  return (ballDiameterM / 2 + objectDiameterM / 2) * GRAB_MARGIN + GRAB_PAD_M;
+}
+
 /**
  * 공이 사물을 붙일 만큼 가까운지 본다. 수평 거리만 본다 — 사물은 바닥에 있고
  * 공도 바닥을 구르므로 높이 차는 판정에 넣지 않는다.
- *
- * 충돌 이벤트를 쓰지 않는 이유: 프레임당 이동거리(약 1.2cm)가 XS 사물 크기(2cm)와
- * 비슷해서 빠를 때 사물을 통과해 버린다. 거리 판정은 그 문제가 없다.
  */
 export function isTouching(
   ball: { x: number; z: number; diameterM: number },
   object: SpawnPoint,
   objectDiameterM: number
 ): boolean {
-  const reach = (ball.diameterM / 2 + objectDiameterM / 2) * GRAB_MARGIN + GRAB_PAD_M;
+  const reach = grabReach(ball.diameterM, objectDiameterM);
   return Math.hypot(ball.x - object.x, ball.z - object.z) <= reach;
+}
+
+/** 선분 AB에서 점 P까지의 최단 거리 */
+export function distanceToSegment(
+  ax: number,
+  az: number,
+  bx: number,
+  bz: number,
+  px: number,
+  pz: number
+): number {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const lenSq = dx * dx + dz * dz;
+  if (lenSq < 1e-12) return Math.hypot(px - ax, pz - az);
+  let t = ((px - ax) * dx + (pz - az) * dz) / lenSq;
+  t = Math.min(1, Math.max(0, t));
+  return Math.hypot(px - (ax + dx * t), pz - (az + dz * t));
+}
+
+/**
+ * 이번 프레임에 공이 지나간 경로가 사물에 닿았는지 본다.
+ *
+ * 끝점만 보면 지나친 순간을 놓친다. 공은 관성이 있어 목표 앞에서 못 멈추고,
+ * 실측에서 8.4cm 창을 두고 10cm에서 되돌아 나가기를 반복했다. 프레임 사이
+ * 이동을 선분으로 보면 스쳐 지나가도 잡힌다 — 눈에 보이는 것과도 일치한다.
+ */
+export function isTouchingPath(
+  from: { x: number; z: number },
+  to: { x: number; z: number },
+  ballDiameterM: number,
+  object: SpawnPoint,
+  objectDiameterM: number
+): boolean {
+  const reach = grabReach(ballDiameterM, objectDiameterM);
+  return distanceToSegment(from.x, from.z, to.x, to.z, object.x, object.z) <= reach;
 }

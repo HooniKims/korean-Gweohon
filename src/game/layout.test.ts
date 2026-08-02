@@ -6,7 +6,10 @@ import {
   START_CLEARANCE,
   ZONE_COUNT,
   ZONE_RADIUS,
+  distanceToSegment,
+  grabReach,
   isTouching,
+  isTouchingPath,
   placeSpawns,
   zoneCenters
 } from "./layout";
@@ -252,5 +255,66 @@ describe("넓은 맵의 무리 구조", () => {
   it("맵이 예전보다 넓다", () => {
     // 2m는 갇히는 느낌이 났다
     expect(FIELD_RADIUS).toBeGreaterThan(4);
+  });
+});
+
+describe("경로 판정", () => {
+  const ball = 0.056;
+  const obj = 0.047;
+  const reach = grabReach(ball, obj);
+
+  it("멈춰 있을 때는 거리 판정과 같다", () => {
+    const at = { x: 0, z: 0 };
+    expect(isTouchingPath(at, at, ball, { x: reach * 0.9, z: 0 }, obj)).toBe(true);
+    expect(isTouchingPath(at, at, ball, { x: reach * 1.1, z: 0 }, obj)).toBe(false);
+  });
+
+  it("지나쳐 버려도 스친 것을 잡는다", () => {
+    // 끝점만 보면 놓친다. 관성 때문에 공이 목표 앞에서 못 멈춘다.
+    const from = { x: -0.3, z: 0 };
+    const to = { x: 0.3, z: 0 };
+    const target = { x: 0, z: 0 };
+    expect(Math.hypot(to.x - target.x, to.z - target.z)).toBeGreaterThan(reach);
+    expect(isTouchingPath(from, to, ball, target, obj)).toBe(true);
+  });
+
+  it("경로에서 멀면 안 잡는다", () => {
+    const from = { x: -0.3, z: 0 };
+    const to = { x: 0.3, z: 0 };
+    expect(isTouchingPath(from, to, ball, { x: 0, z: 0.5 }, obj)).toBe(false);
+  });
+
+  it("경로 끝을 지나 더 가면 안 잡는다", () => {
+    // 선분 밖으로 연장해서 잡으면 안 된다
+    const from = { x: 0, z: 0 };
+    const to = { x: 0.2, z: 0 };
+    expect(isTouchingPath(from, to, ball, { x: 1.0, z: 0 }, obj)).toBe(false);
+  });
+
+  it("공이 커지면 경로 폭도 넓어진다", () => {
+    const from = { x: -0.3, z: 0 };
+    const to = { x: 0.3, z: 0 };
+    const side = { x: 0, z: 0.2 };
+    expect(isTouchingPath(from, to, 0.056, side, obj)).toBe(false);
+    expect(isTouchingPath(from, to, 0.4, side, obj)).toBe(true);
+  });
+});
+
+describe("distanceToSegment", () => {
+  it("선분 위의 점은 0이다", () => {
+    expect(distanceToSegment(0, 0, 2, 0, 1, 0)).toBeCloseTo(0, 10);
+  });
+
+  it("수직 거리를 낸다", () => {
+    expect(distanceToSegment(0, 0, 2, 0, 1, 0.5)).toBeCloseTo(0.5, 10);
+  });
+
+  it("선분 밖이면 끝점까지의 거리다", () => {
+    expect(distanceToSegment(0, 0, 2, 0, 5, 0)).toBeCloseTo(3, 10);
+    expect(distanceToSegment(0, 0, 2, 0, -1, 0)).toBeCloseTo(1, 10);
+  });
+
+  it("길이 0인 선분도 다룬다", () => {
+    expect(distanceToSegment(1, 1, 1, 1, 4, 5)).toBeCloseTo(5, 10);
   });
 });
