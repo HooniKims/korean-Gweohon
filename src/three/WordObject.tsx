@@ -10,7 +10,7 @@ import type { SpawnPlan } from "@/game/words";
 import { getLabelTexture } from "./labelTexture";
 import { measureModel } from "./measureModel";
 import { modelForIndex } from "./modelRegistry";
-import { setLivePosition } from "./spawnPositions";
+import { livePosition, setLivePosition } from "./spawnPositions";
 
 /** 사물 모델의 기본 위쪽. Body가 원점을 바닥 중앙으로 맞추므로 +Y가 위다. */
 const UP = new Vector3(0, 1, 0);
@@ -137,11 +137,20 @@ export function WordObject({
   const url = modelForIndex(spawn.tier, index);
   const body = useRef<RapierRigidBody>(null);
 
-  // 밀려 움직인 실제 위치를 보고한다. 최초 좌표로 판정하면 밀린 뒤로는
-  // 화면에서 사물을 밀고 있는데도 붙지 않는다.
+  /*
+    밀려 움직인 실제 위치를 보고한다. 최초 좌표로 판정하면 밀린 뒤로는
+    화면에서 사물을 밀고 있는데도 붙지 않는다.
+
+    바디가 살아 있는지 반드시 확인한다. 공이 자라면 이 사물이 장애물에서
+    「먹을 수 있는 것」으로 바뀌며 RigidBody가 통째로 사라지는데, 그 뒤에도
+    ref에는 이미 해제된 바디가 남는다. 거기에 translation()을 부르면 Rapier의
+    WASM이 unreachable로 트랩을 밟고, 그 순간부터 물리 월드 전체가 망가져
+    매 프레임 "recursive use of an object" 예외가 나며 렌더 루프가 죽는다.
+    실측에서 첫 부착 직후 타이머가 100초에 멈춘 원인이 이것이었다.
+  */
   useFrame(() => {
     const rb = body.current;
-    if (!rb) return;
+    if (!rb || !rb.isValid()) return;
     const t = rb.translation();
     setLivePosition(index, t.x, t.z);
   });
@@ -163,7 +172,16 @@ export function WordObject({
     못 먹는 것만 밀리는 물체로 둔다. 밀어서 치우거나 돌아가야 하는 장애물이 된다.
   */
   if (pickable) {
-    return <group position={position}>{visual}</group>;
+    /*
+      최초 좌표가 아니라 마지막으로 밀려간 자리에 그린다.
+
+      장애물이던 사물은 공에 밀려 옮겨져 있다. 공이 자라 이 사물이 먹을 수
+      있게 되는 순간 물리 바디가 사라지는데, 그때 최초 좌표로 그리면 화면에서
+      사물이 원래 자리로 순간이동한다. 부착 판정은 밀려간 자리를 쓰므로
+      보이는 곳과 붙는 곳이 어긋난다.
+    */
+    const at = livePosition(index, { x: position[0], z: position[2] });
+    return <group position={[at.x, position[1], at.z]}>{visual}</group>;
   }
 
   return (

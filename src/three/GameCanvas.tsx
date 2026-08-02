@@ -71,7 +71,10 @@ export function GameCanvas({
 }) {
   return (
     <Canvas
-      shadows="soft"
+      // "soft"(PCFSoftShadowMap)는 three 0.185에서 폐기됐다. 지정해도 three가
+      // 내부에서 PCFShadowMap으로 내려버리므로 그림자 모양은 그대로이고 콘솔
+      // 경고만 남는다. 실제로 쓰이는 값을 그대로 적어 경고를 없앤다.
+      shadows="percentage"
       dpr={[1, 1.5]}
       camera={CAMERA}
       style={{ position: "fixed", inset: 0 }}

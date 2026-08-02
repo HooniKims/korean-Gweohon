@@ -131,7 +131,9 @@ export function Katamari({
 
   useFrame((_, delta) => {
     const rb = body.current;
-    if (!rb) return;
+    // 해제된 바디를 읽으면 Rapier WASM이 트랩을 밟고 물리 월드가 통째로 망가진다.
+    // 그 뒤로는 매 프레임 예외가 나서 게임이 멈춘다. WordObject와 같은 이유다.
+    if (!rb || !rb.isValid()) return;
 
     // 카메라가 따라갈 위치는 화면에 실제로 그려진 좌표에서 읽는다.
     // 물리 원시 좌표는 60Hz로 갱신되는데 메시는 그 사이를 보간해 그려지므로,

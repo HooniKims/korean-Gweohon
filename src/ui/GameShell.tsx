@@ -101,9 +101,12 @@ export function GameShell() {
       ballPosition,
       cameraState,
       rotateInput,
-      livePosition
+      livePosition,
+      // 아날로그 입력. 키보드는 8방향뿐이라 스크립트로 몰아도 5cm 공이 8cm 창을
+      // 겨눌 수 없다 — 밸런스를 검증하려면 스틱과 같은 연속 입력이 필요하다.
+      input: vector
     };
-  }, [showDebug]);
+  }, [showDebug, vector]);
 
   if (error) {
     return <main style={centered}>사전을 읽지 못했습니다: {error}</main>;
