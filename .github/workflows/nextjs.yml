@@ -1,0 +1,91 @@
+name: Deploy game to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  NEXT_TELEMETRY_DISABLED: 1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+      - name: Install dependencies
+        run: npm ci
+      - name: Test game rules
+        run: npm test
+      - name: Prepare static export and public asset paths
+        env:
+          PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const base = (process.env.PAGES_BASE_PATH || '').replace(/\/$/, '');
+          fs.renameSync('next.config.mjs', 'next.config.original.mjs');
+          fs.writeFileSync('next.config.mjs', [
+            'import original from "./next.config.original.mjs";',
+            'export default {',
+            '  ...original,',
+            '  output: "export",',
+            `  basePath: ${JSON.stringify(base)},`,
+            '  trailingSlash: true,',
+            '  images: { ...original.images, unoptimized: true }',
+            '};',
+            ''
+          ].join('\n'));
+          // Browser fetch and Three.js loaders do not automatically apply Next.js basePath.
+          // Adjust only the build checkout so local development remains unchanged.
+          function prefixAssets(directory) {
+            for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+              const file = path.join(directory, entry.name);
+              if (entry.isDirectory()) prefixAssets(file);
+              else if (/\.(tsx?|jsx?|css)$/.test(file) && !/\.(test|spec)\./.test(file)) {
+                const source = fs.readFileSync(file, 'utf8');
+                const updated = source.replace(/(["'`])\/(models|data|fonts)\//g, (_, quote, folder) => `${quote}${base}/${folder}/`);
+                if (updated !== source) fs.writeFileSync(file, updated);
+              }
+            }
+          }
+          prefixAssets('src');
+          console.log(`Prepared static export for ${base || '/'}`);
+          NODE
+      - name: Build static site
+        run: npm run build
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
